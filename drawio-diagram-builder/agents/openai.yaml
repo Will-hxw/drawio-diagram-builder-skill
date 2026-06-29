@@ -1,0 +1,4 @@
+interface:
+  display_name: "Draw.io Diagram Builder"
+  short_description: "Build editable draw.io diagrams with visual iteration"
+  default_prompt: "Use $drawio-diagram-builder to create an editable draw.io diagram from my requirements and refine it with screenshot feedback."

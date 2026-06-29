@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<mxfile host="app.diagrams.net" agent="Codex" version="26.0.9" pages="1">
+  <diagram id="minimal" name="Minimal Example">
+    <mxGraphModel dx="800" dy="600" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="800" pageHeight="600" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="input" value="Input" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#666666;fontFamily=Comic Sans MS;" vertex="1" parent="1">
+          <mxGeometry x="120" y="240" width="140" height="70" as="geometry" />
+        </mxCell>
+        <mxCell id="process" value="Process" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#eaf4fb;strokeColor=#2f5f8b;fontFamily=Comic Sans MS;" vertex="1" parent="1">
+          <mxGeometry x="330" y="240" width="140" height="70" as="geometry" />
+        </mxCell>
+        <mxCell id="output" value="Output" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f9fff8;strokeColor=#66984f;fontFamily=Comic Sans MS;" vertex="1" parent="1">
+          <mxGeometry x="540" y="240" width="140" height="70" as="geometry" />
+        </mxCell>
+        <mxCell id="edge_input_process" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=classic;endFill=1;strokeWidth=2;strokeColor=#9c9c9c;fontFamily=Comic Sans MS;" edge="1" parent="1" source="input" target="process">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="edge_process_output" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=classic;endFill=1;strokeWidth=2;strokeColor=#9c9c9c;fontFamily=Comic Sans MS;" edge="1" parent="1" source="process" target="output">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>
