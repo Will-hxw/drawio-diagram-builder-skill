@@ -18,16 +18,16 @@ It was built around a practical Windows failure mode: large draw.io diagrams can
 
 ```text
 .
-├── drawio-diagram-builder/      # The Codex skill folder to install
-│   ├── SKILL.md
-│   ├── agents/openai.yaml
-│   ├── references/
-│   └── scripts/
-├── examples/minimal.drawio
-├── tests/smoke_test.py
-├── README.md
-├── LICENSE
-└── .gitignore
++-- drawio-diagram-builder/      # The Codex skill folder to install
+|   +-- SKILL.md
+|   +-- agents/openai.yaml
+|   +-- references/
+|   +-- scripts/
++-- examples/minimal.drawio
++-- tests/smoke_test.py
++-- README.md
++-- LICENSE
++-- .gitignore
 ```
 
 ## Requirements
@@ -45,6 +45,31 @@ Optional:
 - `@drawio/mcp` for small quick-open diagrams. For large diagrams on Windows, prefer this skill's local preview workflow.
 
 ## Install
+
+### AI-assisted install
+
+If you use Claude, Codex, or another local coding agent, the easiest path is to copy this prompt into the agent and let it install the skill for you:
+
+```text
+Please install the open-source Codex skill from this repository:
+
+https://github.com/Will-hxw/drawio-diagram-builder-skill
+
+Tasks:
+1. Clone or download the repository.
+2. Locate the skill folder named drawio-diagram-builder.
+3. Copy that folder into my local Codex skills directory.
+   - On Windows, use %USERPROFILE%\.codex\skills
+   - On macOS/Linux, use ~/.codex/skills
+4. Verify that SKILL.md exists at:
+   - Windows: %USERPROFILE%\.codex\skills\drawio-diagram-builder\SKILL.md
+   - macOS/Linux: ~/.codex/skills/drawio-diagram-builder/SKILL.md
+5. Run the included smoke test if Python is available:
+   python tests/smoke_test.py
+6. Tell me whether I need to restart Codex for the skill to be discovered.
+
+Do not overwrite unrelated local skills. If a drawio-diagram-builder folder already exists, back it up or ask me before replacing it.
+```
 
 ### Windows PowerShell
 
