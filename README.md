@@ -19,6 +19,16 @@ LLMs can write draw.io XML, but the first result is often not review-ready:
 
 This skill gives an agent a repeatable workflow: create editable XML, preview it through a short local URL, screenshot the result, fix visible defects, and validate the `.drawio` file before handoff.
 
+## Example Output
+
+The goal is not just to produce a static picture. The agent should produce a real editable draw.io file whose components can still be selected, moved, and revised:
+
+![Editable draw.io workspace showing a research figure with selectable objects](assets/drawio-editable-workspace.png)
+
+After screenshot-driven refinement, the same workflow can produce a clean research-style figure suitable for paper drafts, slides, or technical documentation:
+
+![Refined research-style draw.io figure output](assets/research-figure-output.png)
+
 ## What It Is Good For
 
 - Recreating a paper figure as editable draw.io objects.
@@ -49,6 +59,7 @@ This skill gives an agent a repeatable workflow: create editable XML, preview it
 |       +-- make_drawio_preview.py
 |       +-- serve_drawio_preview.py
 |       +-- validate_drawio.py
++-- assets/                      # README images
 +-- examples/minimal.drawio
 +-- tests/smoke_test.py
 +-- README.md
