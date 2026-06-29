@@ -1,13 +1,13 @@
 ---
 name: drawio-diagram-builder
-description: Create, edit, replicate, and iteratively refine editable diagrams.net/draw.io diagrams (.drawio XML) from prompts, papers, repositories, screenshots, or existing diagrams. Use when asked to generate a draw.io file, reproduce a reference figure, avoid drawio MCP long-URL failures, preview through a browser, compare screenshots, or fix diagram layout problems such as text overlap, arrows, colors, icons, fonts, and component alignment.
+description: Create, edit, replicate, and iteratively refine editable research and technical diagrams in diagrams.net/draw.io (.drawio XML) from prompts, papers, repositories, screenshots, or existing diagrams. Use when asked to generate a scientific figure, paper method diagram, ML/system architecture diagram, draw.io file, reference figure reproduction, browser screenshot feedback loop, Windows-safe draw.io preview, or layout fixes for text overlap, arrows, colors, icons, fonts, and component alignment.
 ---
 
-# Draw.io Diagram Builder
+# Research Draw.io Diagram Builder
 
 ## Core Principle
 
-Produce an editable draw.io diagram first. Do not use an embedded screenshot as the final answer when the user asks for redraw, replica, vector, editable, or 100% reproduction. Raster images may be used only as references, temporary overlays, or explicitly approved assets.
+Produce an editable draw.io diagram first, especially for research and technical figures. Do not use an embedded screenshot as the final answer when the user asks for redraw, replica, vector, editable, or 100% reproduction. Raster images may be used only as references, temporary overlays, or explicitly approved assets.
 
 Prefer direct `.drawio` XML authoring plus browser screenshot feedback for complex or high-fidelity diagrams. Use local draw.io UI control only when it materially improves inspection or user handoff.
 
@@ -27,12 +27,13 @@ Use `references/drawio-workflow.md` for the detailed end-to-end process. Use `re
 
 1. **Collect input context**
    - Read the user's prompt, reference images, paper sections, codebase files, or domain notes.
-   - Identify whether the task is conceptual diagram creation, visual replication, architecture diagramming, paper figure recreation, or iterative polish.
+   - Identify whether the task is research figure creation, paper-method diagramming, visual replication, architecture diagramming, repository diagramming, or iterative polish.
    - If exact assets are needed, locate them locally or ask for them. Do not silently replace a required logo/icon with an unrelated one.
 
 2. **Extract the visual specification**
    - Record canvas size, major regions, hierarchy, labels, colors, line styles, fonts, arrows, icons, captions, and spacing.
    - For reference-image replication, create a coordinate-level inventory: bounding boxes, text lines, highlight bars, connectors, loops, and repeated blocks.
+   - For paper figures, preserve exact method terminology and distinguish data construction, training, evaluation, inference, and serving flows.
    - Decide what must be exact and what can be approximated.
 
 3. **Author the `.drawio` file**
@@ -80,6 +81,7 @@ Use `references/drawio-workflow.md` for the detailed end-to-end process. Use `re
 - **Wrong icon fidelity**: Build editable approximations from primitives, or ask for/download the exact icon when exactness matters.
 - **Stale preview**: Add a query string such as `?rev=3`, regenerate preview HTML, or reopen the tab.
 - **Editor chrome hiding details**: Resize viewport, zoom inside draw.io, or export a PNG when draw.io CLI is available.
+- **Research-label drift**: Re-read the source paper or code when labels start becoming generic. Prefer exact names from the source material.
 
 ## Bundled Helpers
 

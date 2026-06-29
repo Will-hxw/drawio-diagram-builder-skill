@@ -1,28 +1,54 @@
-# Draw.io Diagram Builder Skill
+# Research Draw.io Diagram Skill
 
-An open-source Codex skill for creating, previewing, and iteratively refining editable diagrams.net / draw.io diagrams.
+A portable agent skill for producing publication-style, editable diagrams.net / draw.io figures.
 
-This skill is designed for workflows where an agent must generate a real `.drawio` XML file from a prompt, paper, codebase, architecture description, or reference image, then visually verify and improve it through browser screenshots.
+This repository is for AI agents that need to turn papers, method descriptions, codebases, screenshots, or rough prompts into clean `.drawio` diagrams, then inspect and refine them with browser screenshots. It works best for research figures, ML/system diagrams, framework overviews, training/inference pipelines, dataset construction flows, and architecture diagrams.
 
-It was built around a practical Windows failure mode: large draw.io diagrams can break when opened through huge encoded URLs or `.url` shortcuts. The bundled preview helper avoids that path by serving a short local URL and loading XML into diagrams.net with `postMessage`.
+The skill is not limited to Codex. Codex can install it as a local skill, while Claude Code, OpenCode, or other local agents can use it as an instruction pack: read `drawio-diagram-builder/SKILL.md`, load the relevant references, and run the bundled helper scripts.
 
-## What It Does
+## Why This Exists
 
-- Guides Codex to create editable `.drawio` XML instead of embedding screenshots.
-- Supports prompt-to-diagram, paper-to-diagram, codebase-to-diagram, and reference-image replication.
-- Provides a Windows-friendly local preview workflow that avoids long URL failures.
-- Encourages screenshot-driven refinement for text overlap, arrows, icons, colors, and layout.
-- Includes helper scripts for local preview and `.drawio` sanity checks.
+LLMs can write draw.io XML, but the first result is often not review-ready:
+
+- text overlaps or escapes boxes;
+- arrows route incorrectly;
+- loop arrows look wrong;
+- icons are missing or inconsistent;
+- reference figures are embedded as images instead of redrawn as editable objects;
+- large diagrams fail on Windows when opened through huge draw.io URLs or `.url` shortcuts.
+
+This skill gives an agent a repeatable workflow: create editable XML, preview it through a short local URL, screenshot the result, fix visible defects, and validate the `.drawio` file before handoff.
+
+## What It Is Good For
+
+- Recreating a paper figure as editable draw.io objects.
+- Drawing a method overview from a research paper or technical report.
+- Converting a repository into an architecture or data-flow diagram.
+- Creating ML pipeline diagrams with stages, models, datasets, rewards, losses, and serving paths.
+- Iteratively polishing visual details such as typography, colors, dashed containers, highlights, arrows, icons, and spacing.
+- Avoiding the Windows long-URL failure caused by large draw.io payloads.
+
+## What It Is Not
+
+- It is not a draw.io replacement.
+- It is not affiliated with diagrams.net, draw.io, or JGraph.
+- It does not guarantee one-shot pixel perfection. High-fidelity reproduction usually requires several screenshot-feedback passes.
+- It should not be used with sensitive diagrams through the hosted diagrams.net embed page unless that is acceptable for your environment.
 
 ## Repository Layout
 
 ```text
 .
-+-- drawio-diagram-builder/      # The Codex skill folder to install
-|   +-- SKILL.md
-|   +-- agents/openai.yaml
++-- drawio-diagram-builder/      # Agent skill folder
+|   +-- SKILL.md                 # Main workflow loaded by the agent
+|   +-- agents/openai.yaml       # Optional Codex/OpenAI UI metadata
 |   +-- references/
+|   |   +-- drawio-workflow.md   # Research and screenshot iteration workflow
+|   |   +-- xml-authoring.md     # Draw.io XML patterns and layout notes
 |   +-- scripts/
+|       +-- make_drawio_preview.py
+|       +-- serve_drawio_preview.py
+|       +-- validate_drawio.py
 +-- examples/minimal.drawio
 +-- tests/smoke_test.py
 +-- README.md
@@ -30,48 +56,33 @@ It was built around a practical Windows failure mode: large draw.io diagrams can
 +-- .gitignore
 ```
 
-## Requirements
+## Agent-Assisted Install
 
-- Codex with local skills support.
-- Python 3.9 or newer.
-- A browser.
-- Internet access to `https://embed.diagrams.net/` for the bundled preview page.
-
-No Python packages are required.
-
-Optional:
-
-- draw.io desktop or draw.io CLI for export workflows.
-- `@drawio/mcp` for small quick-open diagrams. For large diagrams on Windows, prefer this skill's local preview workflow.
-
-## Install
-
-### AI-assisted install
-
-If you use Claude, Codex, or another local coding agent, the easiest path is to copy this prompt into the agent and let it install the skill for you:
+If you use Claude, Codex, or another local coding agent, copy this prompt into the agent:
 
 ```text
-Please install the open-source Codex skill from this repository:
+Install this open-source research draw.io diagram skill for my local AI-agent workflow:
 
 https://github.com/Will-hxw/drawio-diagram-builder-skill
 
-Tasks:
+Requirements:
 1. Clone or download the repository.
-2. Locate the skill folder named drawio-diagram-builder.
-3. Copy that folder into my local Codex skills directory.
-   - On Windows, use %USERPROFILE%\.codex\skills
-   - On macOS/Linux, use ~/.codex/skills
-4. Verify that SKILL.md exists at:
-   - Windows: %USERPROFILE%\.codex\skills\drawio-diagram-builder\SKILL.md
-   - macOS/Linux: ~/.codex/skills/drawio-diagram-builder/SKILL.md
-5. Run the included smoke test if Python is available:
+2. Locate the folder named drawio-diagram-builder.
+3. If my agent supports a local skills directory, install the folder there.
+   - For Codex on Windows, use %USERPROFILE%\.codex\skills
+   - For Codex on macOS/Linux, use ~/.codex/skills
+   - For other agents, use their documented skills/instructions location.
+4. If my agent does not support skills, keep the repository in a stable local path and tell me to reference drawio-diagram-builder/SKILL.md when asking for diagram work.
+5. Verify that SKILL.md exists in the installed folder.
+6. If Python is available, run:
    python tests/smoke_test.py
-6. Tell me whether I need to restart Codex for the skill to be discovered.
-
-Do not overwrite unrelated local skills. If a drawio-diagram-builder folder already exists, back it up or ask me before replacing it.
+7. Do not overwrite an existing drawio-diagram-builder folder without asking me first.
+8. Tell me whether I need to restart the agent for the skill to be discovered.
 ```
 
-### Windows PowerShell
+## Manual Install
+
+### Codex on Windows
 
 ```powershell
 git clone https://github.com/Will-hxw/drawio-diagram-builder-skill.git
@@ -81,9 +92,9 @@ New-Item -ItemType Directory -Force "$env:USERPROFILE\.codex\skills" | Out-Null
 Copy-Item -Recurse -Force .\drawio-diagram-builder "$env:USERPROFILE\.codex\skills\"
 ```
 
-Start a new Codex session after copying the skill.
+Restart Codex after copying the skill.
 
-### macOS / Linux
+### Codex on macOS / Linux
 
 ```bash
 git clone https://github.com/Will-hxw/drawio-diagram-builder-skill.git
@@ -93,45 +104,62 @@ mkdir -p "$HOME/.codex/skills"
 cp -R drawio-diagram-builder "$HOME/.codex/skills/"
 ```
 
-Start a new Codex session after copying the skill.
+Restart Codex after copying the skill.
 
-## Usage
+### Other Agents
 
-Ask Codex to use the skill explicitly:
+If your agent has a skill or instruction directory, copy `drawio-diagram-builder/` there.
+
+If it does not, keep the repository locally and include this in your prompt:
 
 ```text
-Use $drawio-diagram-builder to create an editable draw.io architecture diagram from this repository.
+Use the research draw.io diagram skill at /path/to/drawio-diagram-builder.
+Read SKILL.md first. Load references/drawio-workflow.md for the end-to-end workflow and references/xml-authoring.md when writing or repairing draw.io XML. Use the scripts folder for preview and validation.
+```
+
+## Example Prompts
+
+```text
+Use $drawio-diagram-builder to read this paper section and create an editable draw.io method overview. Make it look like a polished research figure, not a generic flowchart.
 ```
 
 ```text
-Use $drawio-diagram-builder to reproduce this reference figure as an editable .drawio file. Iterate with screenshots until the layout matches.
+Use $drawio-diagram-builder to reproduce this reference figure as editable draw.io XML. Do not embed the screenshot as the final result. Preview it locally, screenshot it, compare defects, and iterate.
 ```
 
 ```text
-Use $drawio-diagram-builder to read this paper section and draw the method pipeline in diagrams.net style.
+Use the drawio-diagram-builder skill in this repository to inspect the codebase and draw a system architecture diagram with services, data stores, queues, and request flow.
 ```
 
-## Local Preview Workflow
+## Agent Workflow
 
-Generate and serve a preview from a `.drawio` file:
+The skill expects the agent to follow this loop:
+
+1. Understand the source material: prompt, paper, repository, screenshot, or existing diagram.
+2. Extract the figure specification: entities, stages, labels, visual hierarchy, colors, typography, icons, arrows, and caption policy.
+3. Generate editable `.drawio` XML with stable object IDs and explicit geometry.
+4. Preview through a short local URL instead of a huge encoded draw.io URL.
+5. Capture a screenshot of the rendered diagram.
+6. Compare the screenshot against the reference or requirements.
+7. Fix a small batch of visible defects.
+8. Repeat until the diagram is ready.
+9. Validate the file before handoff.
+
+This is intentionally evidence-driven. The agent should not claim a high-fidelity diagram is done without inspecting a rendered screenshot.
+
+## Helper Scripts
+
+No third-party Python packages are required.
+
+### Validate a `.drawio` file
 
 ```powershell
-python .\drawio-diagram-builder\scripts\serve_drawio_preview.py .\examples\minimal.drawio --port 8765
+python .\drawio-diagram-builder\scripts\validate_drawio.py .\examples\minimal.drawio
 ```
 
-Open the printed URL:
+By default, the validator flags embedded raster images because final research diagrams should usually remain editable. Use `--allow-raster` only when image assets are intentional.
 
-```text
-http://127.0.0.1:8765/drawio-preview.html?rev=1
-```
-
-The URL stays short. The XML is sent into the diagrams.net iframe by `postMessage`, which avoids the Windows `.url` failure:
-
-```text
-The data area passed to a system call is too small.
-```
-
-You can also generate only the preview HTML:
+### Generate a short-URL preview page
 
 ```powershell
 python .\drawio-diagram-builder\scripts\make_drawio_preview.py `
@@ -141,19 +169,50 @@ python .\drawio-diagram-builder\scripts\make_drawio_preview.py `
 python -m http.server 8765 --bind 127.0.0.1
 ```
 
-## Saving Edited Diagrams
+Open:
 
-The preview page cannot silently overwrite local files. Browsers intentionally block arbitrary filesystem writes.
-
-When you edit the diagram in the preview and click the blue Save button, the helper page downloads a `.drawio` file. Move that downloaded file back to your intended working path before continuing automated edits.
-
-## Validate a Diagram
-
-```powershell
-python .\drawio-diagram-builder\scripts\validate_drawio.py .\examples\minimal.drawio
+```text
+http://127.0.0.1:8765/drawio-preview.html?rev=1
 ```
 
-For editable-only outputs, the validator flags embedded raster images unless you pass `--allow-raster`.
+### Generate and serve in one command
+
+```powershell
+python .\drawio-diagram-builder\scripts\serve_drawio_preview.py .\examples\minimal.drawio --port 8765
+```
+
+The preview page loads diagrams.net in an iframe and sends XML with `postMessage`. This avoids passing the whole diagram through the browser address bar.
+
+## Windows Notes
+
+Large draw.io diagrams can fail on Windows when a tool tries to open a huge `.url` shortcut or a `#create=` URL. The error can look like this:
+
+```text
+The data area passed to a system call is too small.
+```
+
+Use `serve_drawio_preview.py` or `make_drawio_preview.py` instead. They keep the browser URL short and inject the XML after the page loads.
+
+When editing inside the preview, the blue Save button downloads a `.drawio` file. It cannot silently overwrite your local source file because browsers block arbitrary filesystem writes. Move the downloaded file back to your intended working path before continuing automated edits.
+
+## Research Figure Guidance
+
+For scientific diagrams, prefer:
+
+- exact terminology from the paper or codebase;
+- visible stage boundaries and readable hierarchy;
+- consistent font family, stroke width, and color palette;
+- explicit arrow grammar for generation, training, feedback, evaluation, and serving flows;
+- editable icons or documented asset substitutions;
+- line-level text cells when highlights or dense labels must align precisely;
+- screenshot-based inspection before declaring completion.
+
+Avoid:
+
+- embedding a screenshot as the final "editable" figure;
+- decorative layouts that obscure the method;
+- vague labels such as "process" or "model" when the paper gives real names;
+- one-shot delivery for high-fidelity reference reproduction.
 
 ## Development Smoke Test
 
@@ -161,30 +220,7 @@ For editable-only outputs, the validator flags embedded raster images unless you
 python .\tests\smoke_test.py
 ```
 
-The smoke test checks that:
-
-- the example `.drawio` parses,
-- the validator passes,
-- the preview HTML is generated,
-- the generated preview contains the diagrams.net iframe and save hook.
-
-## Design Philosophy
-
-The skill optimizes for diagrams that can survive real review:
-
-- create editable XML, not screenshot wrappers;
-- use fixed geometry for high-fidelity layout;
-- split dense text into smaller cells when line alignment matters;
-- use editable curved connectors for loop arrows;
-- preview through a real browser and refine from evidence;
-- fix a few visible issues per iteration instead of rewriting the whole diagram.
-
-## Limitations
-
-- diagrams.net rendering may differ slightly between editor, embed, desktop, and exported image.
-- Exact icon/logo fidelity may require user-provided assets.
-- The bundled preview uses the hosted diagrams.net embed page. Do not use it for sensitive diagrams unless that is acceptable for your environment.
-- "100% visual reproduction" usually requires multiple screenshot comparison passes.
+The smoke test checks that the example parses, preview generation works, and the generated preview contains the diagrams.net iframe and save hook.
 
 ## License
 
