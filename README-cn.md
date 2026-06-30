@@ -19,7 +19,11 @@ https://github.com/Will-hxw/drawio-diagram-builder-skill
 安装完成后运行 smoke test，并告诉我实际安装到哪个 skill 路径。
 ```
 
-安装后再让 agent 打开它实际加载的 `SKILL.md`，确认里面提到 `reference-replication-protocol.md`。如果没有，说明它读到的是旧版 skill。
+安装后让 agent 针对它实际加载的 skill 路径运行内置更新检查：
+
+```powershell
+python <installed-skill-dir>\scripts\check_skill_update.py
+```
 
 ## 前置依赖
 
@@ -73,12 +77,14 @@ LLM 能写 draw.io XML，但一次成型的结果通常有问题：
 .
 ├── skills/drawio-diagram-builder/    # 技能目录（npx skills add 自动发现）
 │   ├── SKILL.md                      # 主流程说明
+│   ├── VERSION                       # 已安装 skill 的版本标识
 │   ├── agents/openai.yaml
 │   ├── references/
 │   │   ├── drawio-workflow.md
 │   │   ├── reference-replication-protocol.md
 │   │   └── xml-authoring.md
 │   └── scripts/
+│       ├── check_skill_update.py
 │       ├── make_drawio_preview.py
 │       ├── serve_drawio_preview.py
 │       ├── validate_drawio.py
@@ -119,7 +125,13 @@ cp -R drawio-diagram-builder-skill/skills/drawio-diagram-builder "$HOME/.codex/s
 
 安装后重启 agent。
 
-为避免读到旧版本，请让 agent 报告它实际读取的 skill 路径，并确认 `SKILL.md` 中包含 `references/reference-replication-protocol.md`。如果没有，请重新安装或删除旧 skill 目录。
+为避免读到旧版本，请让 agent 报告它实际读取的 skill 路径，并运行：
+
+```powershell
+python <installed-skill-dir>\scripts\check_skill_update.py
+```
+
+如果脚本返回 `OUTDATED` 或 `UNKNOWN`，请从官方仓库重新安装，不要靠检查某个文件名或某段文本来判断是否最新。
 
 ## 示例 Prompt
 
@@ -136,6 +148,16 @@ cp -R drawio-diagram-builder-skill/skills/drawio-diagram-builder "$HOME/.codex/s
 ```
 
 ## 辅助脚本
+
+所有脚本都是纯 Python 3，无需安装 pip 依赖。
+
+### 检查已安装 skill 是否为最新版
+
+```powershell
+python .\skills\drawio-diagram-builder\scripts\check_skill_update.py
+```
+
+脚本会比较本地 `VERSION` 和 GitHub main 上的最新 `VERSION`。更新检查请使用这个脚本，不要检查某个特定功能字符串，因为 skill 以后还会继续演进。
 
 ### 校验 `.drawio` 文件
 

@@ -19,7 +19,11 @@ https://github.com/Will-hxw/drawio-diagram-builder-skill
 After installing, run its smoke test and tell me the exact skill path.
 ```
 
-After installation, ask the agent to open the installed `SKILL.md` and confirm that it mentions `reference-replication-protocol.md`. If it does not, the agent is using an old copy of the skill.
+After installation, ask the agent to run the bundled update check against its installed skill path:
+
+```powershell
+python <installed-skill-dir>\scripts\check_skill_update.py
+```
 
 ## Prerequisites
 
@@ -73,12 +77,14 @@ This is the intended workflow for high-fidelity scientific diagramming: convert 
 .
 ├── skills/drawio-diagram-builder/    # Agent skill (discovered by npx skills add)
 │   ├── SKILL.md                      # Main workflow
+│   ├── VERSION                       # Installed skill version marker
 │   ├── agents/openai.yaml
 │   ├── references/
 │   │   ├── drawio-workflow.md
 │   │   ├── reference-replication-protocol.md
 │   │   └── xml-authoring.md
 │   └── scripts/
+│       ├── check_skill_update.py
 │       ├── make_drawio_preview.py
 │       ├── serve_drawio_preview.py
 │       ├── validate_drawio.py
@@ -119,7 +125,13 @@ cp -R drawio-diagram-builder-skill/skills/drawio-diagram-builder "$HOME/.codex/s
 
 Restart the agent after copying.
 
-To verify the installed copy, ask the agent to read its active skill file and report the path. It should contain `references/reference-replication-protocol.md`; otherwise reinstall or remove the stale copy from the agent's skill directory.
+To verify the installed copy, ask the agent to report its active skill path and run:
+
+```powershell
+python <installed-skill-dir>\scripts\check_skill_update.py
+```
+
+If the script reports `OUTDATED` or `UNKNOWN`, reinstall from the canonical repository instead of checking for specific files or text snippets.
 
 ## Example Prompts
 
@@ -138,6 +150,14 @@ Use the drawio-diagram-builder skill in this repository to draw a system archite
 ## Helper Scripts
 
 All scripts are plain Python 3 — no pip packages needed.
+
+### Check whether an installed skill is current
+
+```powershell
+python .\skills\drawio-diagram-builder\scripts\check_skill_update.py
+```
+
+The script compares the installed `VERSION` file with the latest `VERSION` on GitHub. Use this for update checks; do not check for one specific feature string because the skill will continue to evolve.
 
 ### Validate a `.drawio` file
 

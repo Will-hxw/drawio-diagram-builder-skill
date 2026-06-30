@@ -117,6 +117,8 @@ Resolve all references relative to the skill directory.
 
 ## Bundled Helpers
 
+- `VERSION`: installed skill version marker. Use it through `scripts/check_skill_update.py`, not by checking for a specific feature string.
+- `scripts/check_skill_update.py`: compare the installed skill version with the canonical GitHub version.
 - `scripts/make_drawio_preview.py`: build a local short-URL preview HTML that loads `.drawio` XML into diagrams.net via `postMessage`.
 - `scripts/serve_drawio_preview.py`: generate the preview HTML and serve it on `127.0.0.1` with an optional browser launch.
 - `scripts/validate_drawio.py`: parse and sanity-check `.drawio` files before handoff.
