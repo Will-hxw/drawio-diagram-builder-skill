@@ -36,7 +36,7 @@ Use this priority order:
 4. **draw.io MCP / `@drawio/mcp`** — only for small diagrams or quick opening. On Windows, large encoded URLs fail with `The data area passed to a system call is too small`; do not rely on `.url` shortcuts for large XML.
 5. **draw.io desktop/CLI export** — if installed. Treat as optional; always have the local iframe preview fallback.
 
-Load `references/drawio-workflow.md` for the detailed end-to-end process. Load `references/xml-authoring.md` when writing or repairing XML shapes, styles, edges, and text layout. Load `references/primitive-icons.md` when a reference figure contains small modality, memory, warning, tool, clock, document, or other paper-style icons that should remain editable. Load `assets/icons/ICON-MANIFEST.md` when generic SVG icon assets would improve fidelity.
+Load `references/drawio-workflow.md` for the detailed end-to-end process. Load `references/self-supervision-and-intake.md` for any non-trivial diagram, mixed prompt-plus-image input, project-context diagram, or iterative visual repair. Load `references/xml-authoring.md` when writing or repairing XML shapes, styles, edges, and text layout. Load `references/primitive-icons.md` when a reference figure contains small modality, memory, warning, tool, clock, document, or other paper-style icons that should remain editable. Load `assets/icons/ICON-MANIFEST.md` when generic SVG icon assets would improve fidelity.
 
 For any reference-image replication request, load `references/reference-replication-protocol.md` before creating XML. This is mandatory. Treat high-fidelity replication as an evidence pipeline: observe the reference, specify geometry, author XML, render, compare, patch, and repeat. Do not start drawing from a reference image until the protocol's required intermediate artifacts exist.
 
@@ -49,10 +49,13 @@ Resolve all references relative to the skill directory.
 2. **Collect input context**
    - Read the user's prompt, reference images, paper sections, codebase files, or domain notes.
    - Identify the task type: research figure creation, paper-method diagramming, visual replication, architecture diagramming, repository diagramming, or iterative polish.
+   - Classify every input by role: content source, structure source, style source, layout source, or asset source. A style reference does not automatically define content or connector semantics.
    - If exact assets are needed, locate them locally or ask for them. Do not silently replace a required logo/icon with an unrelated one.
 
-3. **Extract the visual specification**
+3. **Build the diagram brief and visual specification**
+   - For mixed inputs, prompt-only diagrams, paper/code diagrams, or any complex task, create a brief with: user goal, source inventory, requirement traceability, semantic model, style contract, and open assumptions. Use `references/self-supervision-and-intake.md`.
    - Record canvas size, major regions, hierarchy, labels, colors, line styles, fonts, arrows, icons, captions, and spacing.
+   - Define the meaning of every connector before drawing it: source, target, direction, fan-in/fan-out, feedback, grouping, and arrowhead placement. Do not draw arrows whose semantics you cannot explain.
    - For reference-image replication, create a coordinate-level inventory: bounding boxes, text lines, highlight bars, connectors, loops, and repeated blocks.
    - For paper figures, preserve exact method terminology and distinguish data construction, training, evaluation, inference, and serving flows.
    - Decide what must be exact and what can be approximated.
@@ -80,11 +83,14 @@ Resolve all references relative to the skill directory.
 6. **Iterate from evidence**
    - Compare the screenshot against the reference or requested spec.
    - The screenshot must show the full draw.io canvas or a deliberate crop of the full canvas. Do not judge high-fidelity work from a partial viewport where the diagram is clipped.
+   - Run a self-supervision pass on the latest screenshot against the brief or references: requirement audit, semantic audit, visual hygiene audit, style audit, and regression audit.
+   - Treat these as blockers, not polish: missing required components, wrong arrow direction, wrong fan-in/fan-out, connectors hiding text, text overflow, accidental overlap, incoherent icons, or explicit style violations.
    - Fix a small batch of concrete issues per pass: text overflow, a bad arrow, one misaligned block, wrong color, incorrect icon, spacing, or missing component.
    - Regenerate the preview HTML, refresh the browser (add a cache-busting `?rev=N`), screenshot again, and repeat.
    - Name the specific defects being fixed rather than claiming broad perfection.
    - For reference-image replication, append every screenshot pass to `defect-log.md` with: observed defect, reference evidence, XML cells to change, patch summary, and remaining risk. After the first screenshot row exists, treat `defect-log.md` as append-only; generators may initialize it once but must not overwrite review history.
    - Before claiming improvement, run a red-team visual audit on the latest screenshot: inspect arrow direction, bracket orientation, connector crossings, box overlap, text overflow, z-order, and regressions from the latest patch.
+   - If the user points out an obvious screenshot defect, treat it as a self-supervision failure: re-open the source/reference, correct the interpretation, patch the diagram, screenshot a focused crop plus the full canvas, and record the lesson in the defect log.
    - If the first screenshot is structurally wrong, go back to `visual-spec.md` and `layout-grid.md` before making XML patches. A structural miss means an observation, coordinate, asset, or draw.io-rendering assumption was wrong.
 
 7. **Validate before handoff**
@@ -99,6 +105,7 @@ Resolve all references relative to the skill directory.
 - Preserve user files and unrelated generated files.
 - Keep a working copy and a handoff copy only when useful; keep them synchronized.
 - Never claim the diagram is complete without visual verification (a screenshot).
+- Never claim the diagram is complete if the latest screenshot still has a visible P0/P1 blocker: wrong connector semantics, hidden text, clipped text, missing required content, accidental overlap, or a direct violation of the user's prompt/style reference.
 - When the user asks for "100% reproduction", treat that as an iterative standard: keep finding and fixing visible differences until the user accepts or identifies next issues.
 - For reference-image replication, never skip the intermediate artifacts. A low-quality first draw usually means the observation inventory, coordinate plan, asset ledger, or rendering assumptions were underspecified.
 
@@ -127,6 +134,7 @@ Resolve all references relative to the skill directory.
 - `scripts/validate_drawio.py`: parse and sanity-check `.drawio` files before handoff.
 - `assets/icons/ICON-MANIFEST.md`: local MIT-licensed SVG icon inventory and usage rules.
 - `references/drawio-workflow.md`: full professional workflow for prompt/paper/code/reference-image to editable draw.io.
+- `references/self-supervision-and-intake.md`: mixed-input intake, diagram brief, semantic connector audit, and screenshot self-supervision gate.
 - `references/primitive-icons.md`: reusable editable primitive recipes for common research-figure icons.
 - `references/reference-replication-protocol.md`: low-freedom protocol for high-fidelity reference-image replication.
 - `references/xml-authoring.md`: XML, layout, style, edge, text, icon, and iteration patterns.

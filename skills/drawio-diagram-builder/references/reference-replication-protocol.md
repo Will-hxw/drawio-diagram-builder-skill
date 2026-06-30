@@ -9,12 +9,13 @@ The goal is to make high-fidelity drawing an evidence-driven engineering process
 1. Do not begin `.drawio` XML until the required intermediate artifacts exist.
 2. The primary output is a `.drawio` file. Preview HTML is derived and must not be treated as the source of truth.
 3. Never silently omit a visible component. If an icon, formula, symbol, or image cannot be reproduced exactly, add it to `asset-ledger.md`.
-4. Do not use "close enough" language for high-fidelity work. Record remaining mismatches in `defect-log.md`.
-5. Do not finish without at least one rendered screenshot review. For 100% reproduction requests, keep iterating until the user accepts or the remaining gaps are explicitly listed.
-6. Do not judge fidelity from a clipped browser viewport. The screenshot must include the full draw.io page/canvas or a deliberate canvas-only crop.
-7. If the screenshot shows large structural errors, repair `visual-spec.md` and `layout-grid.md` first, then patch XML. Do not keep nudging objects without updating the plan.
-8. Do not overwrite screenshot review history. A generator may create `defect-log.md` only before review begins; after the first screenshot row exists, append new passes and corrections instead of replacing the file.
-9. Do not run artifact validation in parallel with generation, preview creation, screenshot capture, or scripts that write the same workdir. Validate only after those writes complete so the result reflects one coherent artifact state.
+4. Do not reproduce only the geometry. Identify connector semantics: source, target, direction, fan-in/fan-out, feedback, grouping, and arrowhead placement.
+5. Do not use "close enough" language for high-fidelity work. Record remaining mismatches in `defect-log.md`.
+6. Do not finish without at least one rendered screenshot review. For 100% reproduction requests, keep iterating until the user accepts or the remaining gaps are explicitly listed.
+7. Do not judge fidelity from a clipped browser viewport. The screenshot must include the full draw.io page/canvas or a deliberate canvas-only crop.
+8. If the screenshot shows large structural errors, repair `visual-spec.md` and `layout-grid.md` first, then patch XML. Do not keep nudging objects without updating the plan.
+9. Do not overwrite screenshot review history. A generator may create `defect-log.md` only before review begins; after the first screenshot row exists, append new passes and corrections instead of replacing the file.
+10. Do not run artifact validation in parallel with generation, preview creation, screenshot capture, or scripts that write the same workdir. Validate only after those writes complete so the result reflects one coherent artifact state.
 
 ## Required Artifacts
 
@@ -70,6 +71,9 @@ Required sections:
 
 ## Connectors
 | id | from | to | route | arrowheads | label | notes |
+
+## Semantic Relations And Flow
+| id | source | target | meaning | direction/cardinality | visual evidence |
 
 ## Icons And Images
 | id | bbox x,y,w,h | meaning | exact/approx/missing | replacement plan |
@@ -164,6 +168,9 @@ Required sections:
 ## Screenshot Evidence
 | pass | screenshot path | capture type | full canvas visible | crop/viewport notes |
 
+## Requirement And Semantic Audit
+| check | observed screenshot | expected from reference | actual | status |
+
 ## Red-Team Visual Audit
 | check | observed screenshot | finding | XML cells to change | status |
 
@@ -180,6 +187,7 @@ The screenshot evidence table must state whether the evidence is `full-page`, `c
 The red-team audit is a separate pass whose goal is to find mistakes, not to confirm improvement. It must explicitly inspect:
 
 - arrow direction and arrowhead placement
+- fan-in/fan-out, grouped routes, merge/split points, and feedback semantics
 - bracket orientation and grouped annotation direction
 - connector paths that cross text, pass through boxes, or create impossible flow
 - box overlaps, clipped shapes, and z-order mistakes
@@ -196,6 +204,7 @@ Before handoff, verify:
 - Preview HTML was regenerated after the latest XML edit.
 - At least one screenshot was reviewed.
 - `defect-log.md` includes a screenshot evidence row with capture type and crop/viewport notes.
+- `defect-log.md` includes a requirement and semantic audit of the latest screenshot.
 - `defect-log.md` includes a red-team visual audit of the latest screenshot.
 - `defect-log.md` lists remaining mismatches.
 - Validation was run after generation and preview writes completed, not concurrently with them.
@@ -225,6 +234,7 @@ When a generated result looks bad, inspect these first-principles failure points
 - multiline labels overlap nearby annotations
 - bottom labels escape or touch the page edge
 - connector routes use straight lines where the reference uses loops
+- connector routes preserve geometry but invert the meaning, such as drawing a fan-in as five independent arrows
 - icons were silently replaced with generic symbols
 - background fills, shadows, and dashed borders were skipped
 - generated scripts reset evidence files instead of appending new screenshot observations

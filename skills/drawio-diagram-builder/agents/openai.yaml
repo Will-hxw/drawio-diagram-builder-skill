@@ -1,4 +1,4 @@
 interface:
   display_name: "Research Draw.io Diagram Builder"
-  short_description: "Build editable research draw.io figures"
-  default_prompt: "Use $drawio-diagram-builder to create an editable research-style draw.io diagram from my requirements and refine it with screenshot feedback."
+  short_description: "Build editable research draw.io figures with screenshot self-review"
+  default_prompt: "Use $drawio-diagram-builder to create an editable research-style draw.io diagram from my requirements, build a diagram brief, preview it locally, screenshot it, self-review visual and semantic defects, then iterate."

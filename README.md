@@ -1,6 +1,6 @@
 # Research Draw.io Diagram Skill
 
-A portable agent skill for producing publication-style, editable diagrams.net / draw.io figures from papers, prompts, codebases, or screenshots.
+A portable agent skill for producing publication-style, editable diagrams.net / draw.io figures from papers, prompts, codebases, project context, screenshots, and one or more visual references.
 
 ```bash
 npx skills add Will-hxw/drawio-diagram-builder-skill
@@ -46,11 +46,13 @@ LLMs can write draw.io XML, but the first result is usually not right:
 - reference figures get embedded as images instead of redrawn as editable objects
 - large diagrams crash on Windows with long-URL failures
 
-This skill gives the agent a repeatable workflow: create editable XML → preview through a local URL (not a giant encoded one) → screenshot → fix visible defects → repeat → validate.
+This skill gives the agent a repeatable workflow: synthesize the user's text and image inputs into a diagram brief → create editable XML → preview through a local URL (not a giant encoded one) → screenshot → self-review visible and semantic defects → fix → repeat → validate.
 
 For reference-image replication, the skill now enforces a stricter protocol: the agent must write a visual spec, coordinate layout grid, asset ledger, and defect log before drawing. Final handoff must include a screenshot-reviewed defect log, not just valid XML.
 
-This is the intended workflow for high-fidelity scientific diagramming: convert the reference into observable geometry, render the editable draw.io result, compare pixels and layout, then fix concrete mismatches.
+For prompt, paper, codebase, or mixed-input diagrams, the skill now also requires a self-supervision protocol: classify each input as content, structure, style, layout, or asset evidence; define connector semantics before drawing arrows; inspect screenshots for requirement mismatches, arrow meaning, text overlap, icon coherence, style drift, and regressions.
+
+This is the intended workflow for high-fidelity scientific diagramming: convert the user's inputs into observable requirements and visual constraints, render the editable draw.io result, compare against the brief and references, then fix concrete mismatches.
 
 ## Example Output
 
@@ -64,6 +66,8 @@ This is the intended workflow for high-fidelity scientific diagramming: convert 
 - Draws method overviews from research papers
 - Converts repositories into architecture/data-flow diagrams
 - Creates ML pipeline diagrams (stages, models, datasets, training loops)
+- Combines text requirements with multiple image/style references into one coherent diagram brief
+- Audits connector semantics such as fan-in, fan-out, feedback loops, grouped routes, and arrowhead direction
 - Iteratively polishes typography, colors, arrows, icons, spacing
 - Provides a bundled MIT-licensed Tabler SVG icon inventory for common research-figure symbols
 
@@ -86,6 +90,7 @@ This is the intended workflow for high-fidelity scientific diagramming: convert 
 │   │   ├── drawio-workflow.md
 │   │   ├── primitive-icons.md
 │   │   ├── reference-replication-protocol.md
+│   │   ├── self-supervision-and-intake.md
 │   │   └── xml-authoring.md
 │   └── scripts/
 │       ├── check_skill_update.py
@@ -144,6 +149,10 @@ Use $drawio-diagram-builder to read this paper section and create an editable dr
 ```
 
 ```text
+Use $drawio-diagram-builder to turn my project context, requirements, and these two style references into a publication-style architecture figure. Preview it locally, screenshot it, self-review arrow semantics and text overlap, then iterate.
+```
+
+```text
 Use $drawio-diagram-builder to reproduce this reference figure as editable draw.io XML. Preview locally, screenshot, compare, and iterate.
 ```
 
@@ -196,6 +205,8 @@ python .\skills\drawio-diagram-builder\scripts\validate_replication_artifacts.py
 ```
 
 The stricter check fails if `defect-log.md` still contains placeholder screenshot rows.
+
+The replication validator also requires a requirement/semantic audit. This is intentional: a diagram can look clean while still reversing an arrow, breaking a fan-in/fan-out relationship, or missing a required relation.
 
 For iterative reference replication, keep `defect-log.md` append-only after the first rendered screenshot review. Generate, preview, screenshot, append the review, and then validate; do not run validation while another process is rewriting the same workdir.
 

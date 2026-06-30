@@ -14,6 +14,7 @@ OUT = ROOT / "examples" / "drawio-preview.html"
 REQUIRED_REFERENCE_TEXT = {
     SKILL / "SKILL.md": [
         "references/primitive-icons.md",
+        "references/self-supervision-and-intake.md",
         "append-only",
         "do not run validators in parallel",
     ],
@@ -21,12 +22,21 @@ REQUIRED_REFERENCE_TEXT = {
         "append-only",
         "Do not run artifact validation in parallel",
         "## Screenshot Evidence",
+        "Requirement And Semantic Audit",
         "editor-partial",
         "Red-Team Visual Audit",
+        "fan-in/fan-out",
     ],
     SKILL / "references" / "drawio-workflow.md": [
         "Canvas-only or deliberate crop capture",
         "Do not run XML generation, preview generation, screenshot capture, and artifact validation concurrently",
+        "semantic audit",
+    ],
+    SKILL / "references" / "self-supervision-and-intake.md": [
+        "Diagram Brief",
+        "Requirement Traceability",
+        "Semantic Model",
+        "Blockers That Prevent Handoff",
     ],
     SKILL / "references" / "xml-authoring.md": [
         "Safe rich-text helper for Python generators",
@@ -47,6 +57,7 @@ REQUIRED_REFERENCE_TEXT = {
     SKILL / "scripts" / "validate_replication_artifacts.py": [
         "CAPTURE_TYPES",
         "editor-partial",
+        "Requirement And Semantic Audit",
         "final review needs full-canvas evidence",
     ],
 }

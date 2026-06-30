@@ -29,6 +29,10 @@
 | id | from | to | route | arrowheads | label | notes |
 | e1 | a | b | straight | end | | sample |
 
+## Semantic Relations And Flow
+| id | source | target | meaning | direction/cardinality | visual evidence |
+| e1 | a | b | sample data flow | one-to-one forward | smoke fixture |
+
 ## Icons And Images
 | id | bbox x,y,w,h | meaning | exact/approx/missing | replacement plan |
 | icon1 | 0,0,0,0 | none | missing | not needed |

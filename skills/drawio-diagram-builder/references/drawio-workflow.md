@@ -8,6 +8,7 @@ Classify the request before drawing:
 - **Paper-to-diagram**: read a paper or section, extract method flow, losses, datasets, models, evaluation, and labels.
 - **Codebase-to-diagram**: inspect repo structure, call graph, data flow, deployment, or architecture boundaries.
 - **Reference-image replication**: reproduce a provided figure visually, usually with exact layout, style, typography, and arrows.
+- **Mixed-input design**: combine text requirements, project context, one or more screenshots, and style references into one diagram.
 - **Iterative repair**: user points out screenshot defects; make localized corrections and re-verify.
 
 For each request, capture:
@@ -20,6 +21,20 @@ For each request, capture:
 - exact icons/logos required
 - caption policy
 - preview/opening expectation
+
+For mixed-input tasks, first create a source inventory:
+
+| source role | examples | how to use |
+|-------------|----------|------------|
+| content | prompt, paper text, repo files | determines labels, entities, claims |
+| structure | method description, code relationships, architecture notes | determines hierarchy and connector semantics |
+| style | example figures, screenshots, visual adjectives | determines font, palette, spacing, icon language |
+| layout | reference composition, requested orientation | determines region placement and flow |
+| asset | logos, icons, screenshots | determines exact reusable visual assets |
+
+Do not collapse these roles. A screenshot can be a style reference without being a content reference. A paper section can define content without defining visual style.
+
+For complex work, write `diagram-brief.md` using `self-supervision-and-intake.md` before authoring XML.
 
 ## 2. Content Extraction
 
@@ -43,8 +58,17 @@ For reference-image replication:
 1. Open the reference image and note dimensions.
 2. Divide it into regions.
 3. Inventory bounding boxes, text blocks, highlights, arrows, icons, and recurring elements.
-4. Recreate the diagram with editable objects; do not trace by embedding the image as the final output.
-5. Keep the reference image available for each screenshot comparison pass.
+4. Identify connector semantics, not just connector geometry: source, target, direction, fan-in/fan-out, grouping, and feedback loops.
+5. Recreate the diagram with editable objects; do not trace by embedding the image as the final output.
+6. Keep the reference image available for each screenshot comparison pass.
+
+For prompt-only or freeform diagrams:
+
+1. Convert the request into a requirement traceability table.
+2. Define entities and relationships before picking layout.
+3. Choose a visual grammar: pipeline, layered system, swimlane, state machine, hierarchy, feedback loop, comparison, or dashboard-like overview.
+4. Establish a style contract: font, palette, density, corner radius, stroke, icon family, and caption policy.
+5. Mark uncertain content or speculative relationships so the final handoff can disclose them.
 
 ## 3. Layout Planning
 
@@ -58,6 +82,14 @@ Use a coordinate plan for high-fidelity diagrams:
 - repeated block dimensions
 - arrow start/end points
 - text line heights
+
+Use a semantic plan for connectors:
+
+- source and target
+- arrowhead placement
+- relation type: data, control, feedback, update, query, selection, dependency, annotation, grouping
+- cardinality: one-to-one, fan-in, fan-out, many-to-many, bidirectional
+- forbidden crossing zones: titles, formulas, labels, icons, and dense paragraphs
 
 For publication-style figures:
 
@@ -164,12 +196,18 @@ Each iteration should be narrow:
 1. Refresh the local preview URL (with cache bust).
 2. Screenshot.
 3. Compare against the reference/spec.
-4. Pick 3 to 5 visible issues.
-5. Patch only those objects in the XML.
-6. Regenerate the preview HTML (the server reads from the HTML file, not live XML — you MUST re-run `make_drawio_preview.py` after XML changes).
-7. Append the pass to `defect-log.md`; after the first screenshot row exists, do not overwrite earlier review rows.
-8. Run validators only after generation and preview writes complete.
-9. Go to step 1.
+4. Run self-supervision against the whole diagram, not just the edited area:
+   - requirement audit: does the diagram satisfy the prompt/brief?
+   - semantic audit: do arrows, loops, and grouped routes mean the right thing?
+   - visual hygiene audit: are text, boxes, icons, and arrows readable and non-overlapping?
+   - style audit: does it match the requested style or reference family?
+   - regression audit: did this pass break something that previously worked?
+5. Pick 3 to 5 visible issues.
+6. Patch only those objects in the XML.
+7. Regenerate the preview HTML (the server reads from the HTML file, not live XML - you MUST re-run `make_drawio_preview.py` after XML changes).
+8. Append the pass to `defect-log.md` or a lighter screenshot review table; after the first screenshot row exists, do not overwrite earlier review rows.
+9. Run validators only after generation and preview writes complete.
+10. Go to step 1.
 
 Useful issue categories:
 
@@ -187,6 +225,16 @@ Useful issue categories:
 - stage band alignment
 - missing caption or unwanted caption
 
+Blocker categories that prevent handoff:
+
+- wrong connector direction, fan-in/fan-out, or feedback meaning
+- missing required entity or relationship
+- arrows crossing or hiding text
+- text hidden by boxes, clipped by boundaries, or escaping its intended region
+- obvious icon mismatch or missing icon for a required concept
+- visual result conflicts with an explicit style constraint
+- screenshot evidence is clipped or too partial to verify the full diagram
+
 Avoid broad rewrites after a good base exists. Small visual regressions are easier to isolate when each pass changes only a few cells.
 
 ## 7. Handoff
@@ -200,3 +248,5 @@ Provide:
 - remaining known visual gaps if any
 
 If exact icons/logos were approximated, state that clearly and identify which assets should be supplied for the next fidelity pass.
+
+Do not describe a diagram as complete if the latest screenshot still contains a visible blocker. Either iterate again or explicitly list the blocker as unresolved.

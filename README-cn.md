@@ -1,6 +1,6 @@
 # Research Draw.io Diagram Skill
 
-用于根据论文、Prompt、代码仓库或截图生成适合发表的、可编辑的 diagrams.net / draw.io 图表。
+用于根据论文、Prompt、代码仓库、项目上下文、截图，以及一张或多张视觉参考图，生成适合发表的、可编辑的 diagrams.net / draw.io 图表。
 
 ```bash
 npx skills add Will-hxw/drawio-diagram-builder-skill
@@ -46,11 +46,13 @@ LLM 能写 draw.io XML，但一次成型的结果通常有问题：
 - 参考图被直接嵌入为图片而非重绘为可编辑对象
 - 大图表在 Windows 上因 URL 过长崩溃
 
-这个技能提供一套可复现的流程：生成可编辑 XML → 本地短 URL 预览（非巨型编码 URL）→ 截图 → 修正可见缺陷 → 重复 → 验证。
+这个技能提供一套可复现的流程：把用户的文字和图片输入综合成 diagram brief → 生成可编辑 XML → 本地短 URL 预览（非巨型编码 URL）→ 截图 → 自监督检查可见缺陷和语义缺陷 → 修正 → 重复 → 验证。
 
 针对参考图复刻，技能会走更严格的协议：agent 必须先写视觉规格、坐标网格、素材台账和缺陷日志，再开始画 `.drawio`。最终交付时必须证明已经截图复审，而不是只生成一份能解析的 XML。
 
-这是高保真科研绘图本来就应该遵循的工作流：把参考图转化为可观察的几何规格，渲染可编辑的 draw.io 结果，比对版面和像素，再修复具体差异。
+对于 Prompt、论文、代码库或混合输入的绘图任务，技能也要求走自监督协议：把每个输入区分为内容来源、结构来源、风格来源、版式来源或素材来源；画箭头前先定义连接语义；截图后检查需求偏差、箭头含义、文字遮挡、图标一致性、风格漂移和回归问题。
+
+这是高保真科研绘图本来就应该遵循的工作流：把用户输入转化为可观察的需求和视觉约束，渲染可编辑的 draw.io 结果，对照 brief 和参考图，再修复具体差异。
 
 ## 产出示例
 
@@ -64,6 +66,8 @@ LLM 能写 draw.io XML，但一次成型的结果通常有问题：
 - 根据论文绘制方法总览图
 - 将代码仓库转化为架构/数据流图
 - 创建 ML 流水线图（阶段、模型、数据集、训练循环等）
+- 将文字需求与多张图片/风格参考综合为一份清晰的绘图 brief
+- 审查 fan-in、fan-out、反馈回路、分组路径、箭头方向等连接语义
 - 迭代精修排版、配色、箭头、图标、间距
 - 内置一批 MIT 许可的 Tabler SVG 图标，覆盖常见科研图符号
 
@@ -86,6 +90,7 @@ LLM 能写 draw.io XML，但一次成型的结果通常有问题：
 │   │   ├── drawio-workflow.md
 │   │   ├── primitive-icons.md
 │   │   ├── reference-replication-protocol.md
+│   │   ├── self-supervision-and-intake.md
 │   │   └── xml-authoring.md
 │   └── scripts/
 │       ├── check_skill_update.py
@@ -144,6 +149,10 @@ python <installed-skill-dir>\scripts\check_skill_update.py
 ```
 
 ```text
+使用 $drawio-diagram-builder 综合我的项目上下文、绘图需求和这两张风格参考图，生成一张科研论文风格的架构图。本地预览、截图、自监督检查箭头语义和文字遮挡，然后迭代。
+```
+
+```text
 使用 $drawio-diagram-builder 将这张参考图重绘为可编辑的 draw.io XML。本地预览、截图、比对、迭代。
 ```
 
@@ -196,6 +205,8 @@ python .\skills\drawio-diagram-builder\scripts\validate_replication_artifacts.py
 ```
 
 严格模式会在 `defect-log.md` 仍然包含截图占位内容时失败。
+
+复刻验证还要求包含需求/语义审查。这是刻意设计的：一张图即使看起来干净，也可能把箭头方向、汇聚/分叉关系或关键关系画错。
 
 参考图迭代复刻时，第一次渲染截图复审后应把 `defect-log.md` 视为追加日志。正确顺序是：生成、预览、截图、追加复审记录，然后再验证；不要在其他进程重写同一工作目录时并发运行验证。
 

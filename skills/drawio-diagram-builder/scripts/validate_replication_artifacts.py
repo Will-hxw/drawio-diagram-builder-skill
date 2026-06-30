@@ -17,6 +17,7 @@ REQUIRED = {
         "## Text Blocks",
         "## Shapes",
         "## Connectors",
+        "## Semantic Relations And Flow",
         "## Icons And Images",
     ],
     "layout-grid.md": [
@@ -39,6 +40,7 @@ REQUIRED = {
         "## Pass 0 - Initial Plan Review",
         "## Pass 1 - Screenshot Review",
         "## Screenshot Evidence",
+        "## Requirement And Semantic Audit",
         "## Red-Team Visual Audit",
         "## Remaining Gaps",
     ],
@@ -97,6 +99,14 @@ def main() -> int:
                     "defect-log.md does not record screenshot capture type "
                     f"(expected one of: {', '.join(CAPTURE_TYPES)})"
                 )
+            semantic_audit_start = text.find("## requirement and semantic audit")
+            red_team_start = text.find("## red-team visual audit")
+            if semantic_audit_start != -1:
+                semantic_section = text[semantic_audit_start:red_team_start if red_team_start != -1 else None]
+                if ".png" not in semantic_section and ".jpg" not in semantic_section and ".jpeg" not in semantic_section and ".webp" not in semantic_section:
+                    errors.append("defect-log.md requirement and semantic audit does not reference a screenshot image")
+                if "expected" not in semantic_section or "actual" not in semantic_section:
+                    errors.append("defect-log.md requirement and semantic audit must compare expected vs actual")
             if "editor-partial" in text and not any(
                 capture_type in text
                 for capture_type in ("full-page", "canvas-only", "deliberate-crop", "editor-full-canvas")
