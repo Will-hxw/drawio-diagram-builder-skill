@@ -109,21 +109,38 @@ Then open:
 http://127.0.0.1:8765/drawio-preview.html?rev=1
 ```
 
+**Important**: The preview HTML embeds the XML inline as a JavaScript string. It does NOT read the `.drawio` file live. After editing the `.drawio` file, you MUST re-run `make_drawio_preview.py` (or `serve_drawio_preview.py`) to embed the updated XML into the HTML. Then refresh the browser to see changes.
+
 The preview page uses an iframe to `https://embed.diagrams.net/` and sends the XML through `postMessage`, so the browser address stays short.
 
 When the user edits the diagram in this preview, the blue Save button triggers a `.drawio` download. It does not overwrite the original local file automatically. Ask the user to place the downloaded file at the intended path, or continue from the downloaded path.
 
 ## 6. Screenshot Feedback Loop
 
+This is the core mechanism. Without screenshots, the agent is guessing.
+
+### How to take the screenshot
+
+1. Start the preview server (see Section 5) — `serve_drawio_preview.py` or `python -m http.server`.
+2. Navigate the browser to `http://127.0.0.1:8765/drawio-preview.html?rev=N` (increment N to bust cache).
+3. **Wait 3-5 seconds** for the `embed.diagrams.net` iframe to fully render. If you snapshot too early, you'll see a blank or loading page.
+4. Take a full-page or viewport screenshot. Use whatever browser tooling is available:
+   - Playwright/Puppeteer MCP: `page.screenshot()`
+   - Browser MCP: `browser_take_screenshot`
+   - Any browser automation that can navigate to a URL and capture pixels
+5. Save the screenshot and inspect it.
+
+### Iteration loop
+
 Each iteration should be narrow:
 
-1. Open or refresh the local preview URL.
-2. Set a stable viewport.
-3. Screenshot.
-4. Compare the screenshot against the reference/spec.
-5. Pick 3 to 5 visible issues.
-6. Patch only those objects.
-7. Rebuild preview and screenshot again.
+1. Refresh the local preview URL (with cache bust).
+2. Screenshot.
+3. Compare against the reference/spec.
+4. Pick 3 to 5 visible issues.
+5. Patch only those objects in the XML.
+6. Regenerate the preview HTML (the server reads from the HTML file, not live XML — you MUST re-run `make_drawio_preview.py` after XML changes).
+7. Go to step 1.
 
 Useful issue categories:
 

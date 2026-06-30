@@ -6,7 +6,7 @@ from pathlib import Path
 
 
 ROOT = Path(__file__).resolve().parents[1]
-SKILL = ROOT / "drawio-diagram-builder"
+SKILL = ROOT / "skills" / "drawio-diagram-builder"
 EXAMPLE = ROOT / "examples" / "minimal.drawio"
 OUT = ROOT / "examples" / "drawio-preview.html"
 
