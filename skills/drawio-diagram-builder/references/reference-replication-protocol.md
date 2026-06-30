@@ -11,6 +11,8 @@ The goal is to stop the agent from guessing. The agent must first convert the im
 3. Never silently omit a visible component. If an icon, formula, symbol, or image cannot be reproduced exactly, add it to `asset-ledger.md`.
 4. Do not use "close enough" language for high-fidelity work. Record remaining mismatches in `defect-log.md`.
 5. Do not finish without at least one rendered screenshot review. For 100% reproduction requests, keep iterating until the user accepts or the remaining gaps are explicitly listed.
+6. Do not judge fidelity from a clipped browser viewport. The screenshot must include the full draw.io page/canvas or a deliberate canvas-only crop.
+7. If the screenshot shows large structural errors, repair `visual-spec.md` and `layout-grid.md` first, then patch XML. Do not keep nudging objects without updating the plan.
 
 ## Required Artifacts
 
@@ -23,7 +25,15 @@ asset-ledger.md
 defect-log.md
 ```
 
-Run `scripts/validate_replication_artifacts.py <workdir>` before authoring XML and again before handoff.
+Run `scripts/validate_replication_artifacts.py <workdir>` before authoring XML.
+
+After the latest screenshot pass and before handoff, run:
+
+```powershell
+python scripts/validate_replication_artifacts.py <workdir> --require-screenshot-review
+```
+
+This final check fails if `defect-log.md` still contains placeholder screenshot rows.
 
 ## 1. visual-spec.md
 
@@ -159,11 +169,13 @@ Before handoff, verify:
 
 - The `.drawio` file exists and is the primary artifact.
 - `validate_drawio.py` passes.
-- `validate_replication_artifacts.py` passes.
+- `validate_replication_artifacts.py <workdir> --require-screenshot-review` passes.
 - Preview HTML was regenerated after the latest XML edit.
 - At least one screenshot was reviewed.
 - `defect-log.md` lists remaining mismatches.
 - No visible reference component was silently omitted.
+
+For a "100% reproduction" request, the defect log must not claim perfection. It must either show that no visible mismatches remain after screenshot review, or list the exact remaining mismatches and the next patch targets.
 
 ## Guidance For Weak Spatial Models
 
@@ -179,3 +191,13 @@ Prefer a simpler but structurally faithful first draft over a visually dense but
 6. Correct colors and polish.
 
 Only after the structure is correct should the agent increase visual density.
+
+When a generated result looks bad, inspect these failure points first:
+
+- canvas scale or browser zoom makes the page clipped
+- headings are too large and wrap unexpectedly
+- multiline labels overlap nearby annotations
+- bottom labels escape or touch the page edge
+- connector routes use straight lines where the reference uses loops
+- icons were silently replaced with generic symbols
+- background fills, shadows, and dashed borders were skipped

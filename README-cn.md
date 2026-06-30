@@ -8,6 +8,17 @@ npx skills add Will-hxw/drawio-diagram-builder-skill
 
 > [English version](README.md)
 
+## 让 Agent 直接安装
+
+把下面这段话复制给 Codex、Claude Code 或其他本地 coding agent：
+
+```text
+请从下面这个仓库安装并测试 drawio-diagram-builder skill：
+https://github.com/Will-hxw/drawio-diagram-builder-skill
+
+安装完成后运行 smoke test，并告诉我实际安装到哪个 skill 路径。
+```
+
 ## 前置依赖
 
 | 依赖 | 原因 |
@@ -30,6 +41,8 @@ LLM 能写 draw.io XML，但一次成型的结果通常有问题：
 - 大图表在 Windows 上因 URL 过长崩溃
 
 这个技能提供一套可复现的流程：生成可编辑 XML → 本地短 URL 预览（非巨型编码 URL）→ 截图 → 修正可见缺陷 → 重复 → 验证。
+
+针对参考图复刻，技能会走更严格的协议：agent 必须先写视觉规格、坐标网格、素材台账和缺陷日志，再开始画 `.drawio`。最终交付时必须证明已经截图复审，而不是只生成一份能解析的 XML。
 
 ## 产出示例
 
@@ -59,11 +72,13 @@ LLM 能写 draw.io XML，但一次成型的结果通常有问题：
 │   ├── agents/openai.yaml
 │   ├── references/
 │   │   ├── drawio-workflow.md
+│   │   ├── reference-replication-protocol.md
 │   │   └── xml-authoring.md
 │   └── scripts/
 │       ├── make_drawio_preview.py
 │       ├── serve_drawio_preview.py
-│       └── validate_drawio.py
+│       ├── validate_drawio.py
+│       └── validate_replication_artifacts.py
 ├── assets/                           # README 配图
 ├── examples/minimal.drawio
 ├── tests/smoke_test.py
@@ -123,6 +138,22 @@ python .\skills\drawio-diagram-builder\scripts\validate_drawio.py .\examples\min
 ```
 
 默认标记内嵌位图。仅在有意使用图片素材时加 `--allow-raster`。
+
+### 校验参考图复刻过程文档
+
+从参考图开始绘制前：
+
+```powershell
+python .\skills\drawio-diagram-builder\scripts\validate_replication_artifacts.py .\workdir
+```
+
+最终交付前，在至少完成一次渲染截图复审后：
+
+```powershell
+python .\skills\drawio-diagram-builder\scripts\validate_replication_artifacts.py .\workdir --require-screenshot-review
+```
+
+严格模式会在 `defect-log.md` 仍然包含截图占位内容时失败。
 
 ### 一键生成预览并启动服务
 

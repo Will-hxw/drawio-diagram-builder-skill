@@ -18,6 +18,8 @@ Before starting, verify these are available. If anything is missing, tell the us
 
 Script paths in this document are relative to the skill directory. Resolve them like `<skill-dir>/scripts/serve_drawio_preview.py`. If you can't find the skill directory, look under the agent's installed skills path (e.g., `~/.claude/skills/drawio-diagram-builder/` or `~/.codex/skills/drawio-diagram-builder/`).
 
+If Playwright reports a missing bundled browser, first try an installed browser channel before giving up, for example `npx playwright screenshot --channel chrome ...` or `--channel msedge ...`.
+
 ## Core Principle
 
 Produce an editable draw.io diagram first, especially for research and technical figures. Do not use an embedded screenshot as the final answer when the user asks for redraw, replica, vector, editable, or 100% reproduction. Raster images may be used only as references, temporary overlays, or explicitly approved assets.
@@ -77,13 +79,16 @@ Resolve all references relative to the skill directory.
 
 6. **Iterate from evidence**
    - Compare the screenshot against the reference or requested spec.
+   - The screenshot must show the full draw.io canvas or a deliberate crop of the full canvas. Do not judge high-fidelity work from a partial viewport where the diagram is clipped.
    - Fix a small batch of concrete issues per pass: text overflow, a bad arrow, one misaligned block, wrong color, incorrect icon, spacing, or missing component.
    - Regenerate the preview HTML, refresh the browser (add a cache-busting `?rev=N`), screenshot again, and repeat.
    - Name the specific defects being fixed rather than claiming broad perfection.
    - For reference-image replication, append every screenshot pass to `defect-log.md` with: observed defect, reference evidence, XML cells to change, patch summary, and remaining risk.
+   - If the first screenshot is structurally wrong, go back to `visual-spec.md` and `layout-grid.md` before making random XML patches.
 
 7. **Validate before handoff**
    - Run `scripts/validate_drawio.py <file>.drawio`.
+   - For reference-image replication, also run `scripts/validate_replication_artifacts.py <workdir> --require-screenshot-review` after the latest screenshot pass.
    - Confirm: XML parses, page count is expected, no unwanted embedded raster images, captions included/removed as requested, latest screenshot reviewed.
    - Provide the `.drawio` path and the latest screenshot path. Leave the local preview server running if the user wants to continue iterating.
 
@@ -106,6 +111,7 @@ Resolve all references relative to the skill directory.
 - **Wrong icon fidelity**: Build editable approximations from primitives, or ask for/download the exact icon when exactness matters.
 - **Stale preview**: Add a query string such as `?rev=3`, regenerate preview HTML, or reopen the tab.
 - **Editor chrome hiding details**: Resize viewport, zoom inside draw.io, or export a PNG if draw.io CLI is available.
+- **Partial screenshot false positives**: If the screenshot clips any page edge, retake it with a larger viewport, a lower draw.io zoom, or a canvas-only crop before judging fidelity.
 - **Research-label drift**: Re-read the source paper or code when labels start becoming generic. Prefer exact names from the source material.
 - **Preview iframe not loading**: Wait a few more seconds — the `embed.diagrams.net` iframe can take 3-5 seconds on slow connections. If it still fails, verify internet access.
 

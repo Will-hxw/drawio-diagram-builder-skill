@@ -26,6 +26,14 @@ def main() -> int:
     run(
         [
             sys.executable,
+            str(SKILL / "scripts" / "validate_replication_artifacts.py"),
+            str(protocol_dir),
+            "--require-screenshot-review",
+        ]
+    )
+    run(
+        [
+            sys.executable,
             str(SKILL / "scripts" / "make_drawio_preview.py"),
             str(EXAMPLE),
             "--out",
