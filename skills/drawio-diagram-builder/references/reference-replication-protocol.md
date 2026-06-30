@@ -157,11 +157,23 @@ Required sections:
 ## Pass 1 - Screenshot Review
 | issue | observed screenshot | reference evidence | XML cells to change | patch summary | status |
 
+## Red-Team Visual Audit
+| check | observed screenshot | finding | XML cells to change | status |
+
 ## Remaining Gaps
 | gap | severity | reason | next action |
 ```
 
 Each screenshot pass must add concrete defects. Avoid entries like "looks bad"; write "right-side multimodal panel is 18% too narrow" or "top dense-token bar missing icon cells".
+
+The red-team audit is a separate pass whose goal is to find mistakes, not to confirm improvement. It must explicitly inspect:
+
+- arrow direction and arrowhead placement
+- bracket orientation and grouped annotation direction
+- connector paths that cross text, pass through boxes, or create impossible flow
+- box overlaps, clipped shapes, and z-order mistakes
+- text overflow, wrapped titles, illegible formulas, and labels crossed by lines
+- regressions introduced by the latest patch
 
 ## Minimum Quality Gate
 
@@ -172,6 +184,7 @@ Before handoff, verify:
 - `validate_replication_artifacts.py <workdir> --require-screenshot-review` passes.
 - Preview HTML was regenerated after the latest XML edit.
 - At least one screenshot was reviewed.
+- `defect-log.md` includes a red-team visual audit of the latest screenshot.
 - `defect-log.md` lists remaining mismatches.
 - No visible reference component was silently omitted.
 

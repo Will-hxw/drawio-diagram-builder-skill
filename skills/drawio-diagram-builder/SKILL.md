@@ -84,6 +84,7 @@ Resolve all references relative to the skill directory.
    - Regenerate the preview HTML, refresh the browser (add a cache-busting `?rev=N`), screenshot again, and repeat.
    - Name the specific defects being fixed rather than claiming broad perfection.
    - For reference-image replication, append every screenshot pass to `defect-log.md` with: observed defect, reference evidence, XML cells to change, patch summary, and remaining risk.
+   - Before claiming improvement, run a red-team visual audit on the latest screenshot: inspect arrow direction, bracket orientation, connector crossings, box overlap, text overflow, z-order, and regressions from the latest patch.
    - If the first screenshot is structurally wrong, go back to `visual-spec.md` and `layout-grid.md` before making XML patches. A structural miss means an observation, coordinate, asset, or draw.io-rendering assumption was wrong.
 
 7. **Validate before handoff**

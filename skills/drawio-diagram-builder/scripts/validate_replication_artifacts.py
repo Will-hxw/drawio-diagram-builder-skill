@@ -38,6 +38,7 @@ REQUIRED = {
         "# Defect Log",
         "## Pass 0 - Initial Plan Review",
         "## Pass 1 - Screenshot Review",
+        "## Red-Team Visual Audit",
         "## Remaining Gaps",
     ],
 }
