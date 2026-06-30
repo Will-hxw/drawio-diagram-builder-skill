@@ -6,6 +6,8 @@ A portable agent skill for producing publication-style, editable diagrams.net / 
 npx skills add Will-hxw/drawio-diagram-builder-skill
 ```
 
+> [中文版](README-cn.md)
+
 ## Prerequisites
 
 | Requirement | Why |
