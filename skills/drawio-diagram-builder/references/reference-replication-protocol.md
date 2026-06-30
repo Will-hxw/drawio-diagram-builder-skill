@@ -13,6 +13,8 @@ The goal is to make high-fidelity drawing an evidence-driven engineering process
 5. Do not finish without at least one rendered screenshot review. For 100% reproduction requests, keep iterating until the user accepts or the remaining gaps are explicitly listed.
 6. Do not judge fidelity from a clipped browser viewport. The screenshot must include the full draw.io page/canvas or a deliberate canvas-only crop.
 7. If the screenshot shows large structural errors, repair `visual-spec.md` and `layout-grid.md` first, then patch XML. Do not keep nudging objects without updating the plan.
+8. Do not overwrite screenshot review history. A generator may create `defect-log.md` only before review begins; after the first screenshot row exists, append new passes and corrections instead of replacing the file.
+9. Do not run artifact validation in parallel with generation, preview creation, screenshot capture, or scripts that write the same workdir. Validate only after those writes complete so the result reflects one coherent artifact state.
 
 ## Required Artifacts
 
@@ -142,6 +144,8 @@ Required sections:
 
 If using an embedded raster image, state why editability is intentionally reduced.
 
+For common paper-figure icons, consult `primitive-icons.md` before inventing one-off approximations. Use the asset ledger to name the primitive recipe used, or to explain why a recipe was insufficient.
+
 ## 4. defect-log.md
 
 This file records screenshot-based refinement.
@@ -157,6 +161,9 @@ Required sections:
 ## Pass 1 - Screenshot Review
 | issue | observed screenshot | reference evidence | XML cells to change | patch summary | status |
 
+## Screenshot Evidence
+| pass | screenshot path | capture type | full canvas visible | crop/viewport notes |
+
 ## Red-Team Visual Audit
 | check | observed screenshot | finding | XML cells to change | status |
 
@@ -165,6 +172,10 @@ Required sections:
 ```
 
 Each screenshot pass must add concrete defects. Avoid entries like "looks bad"; write "right-side multimodal panel is 18% too narrow" or "top dense-token bar missing icon cells".
+
+The screenshot evidence table must state whether the evidence is `full-page`, `canvas-only`, `deliberate-crop`, `editor-full-canvas`, or `editor-partial`. Use `editor-partial` only for debugging; it is not enough for final fidelity claims. For final handoff, the latest evidence should show the full canvas/page or a deliberate crop that contains the whole diagram.
+
+`defect-log.md` is append-only after the first rendered screenshot review. If an earlier row becomes outdated, add a later pass row explaining the correction; do not delete or regenerate previous screenshot evidence. This preserves the visual debugging chain and prevents a new generation run from erasing regressions the user already saw.
 
 The red-team audit is a separate pass whose goal is to find mistakes, not to confirm improvement. It must explicitly inspect:
 
@@ -184,8 +195,10 @@ Before handoff, verify:
 - `validate_replication_artifacts.py <workdir> --require-screenshot-review` passes.
 - Preview HTML was regenerated after the latest XML edit.
 - At least one screenshot was reviewed.
+- `defect-log.md` includes a screenshot evidence row with capture type and crop/viewport notes.
 - `defect-log.md` includes a red-team visual audit of the latest screenshot.
 - `defect-log.md` lists remaining mismatches.
+- Validation was run after generation and preview writes completed, not concurrently with them.
 - No visible reference component was silently omitted.
 
 For a "100% reproduction" request, the defect log must not claim perfection. It must either show that no visible mismatches remain after screenshot review, or list the exact remaining mismatches and the next patch targets.
@@ -214,5 +227,7 @@ When a generated result looks bad, inspect these first-principles failure points
 - connector routes use straight lines where the reference uses loops
 - icons were silently replaced with generic symbols
 - background fills, shadows, and dashed borders were skipped
+- generated scripts reset evidence files instead of appending new screenshot observations
+- validator results were taken while another process was still rewriting the workdir
 
 Use the defect log as an engineering ledger: every visible mismatch should map to either a missing observation, an incorrect coordinate, an unavailable asset, or a draw.io rendering difference.

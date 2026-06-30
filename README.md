@@ -65,11 +65,13 @@ This is the intended workflow for high-fidelity scientific diagramming: convert 
 - Converts repositories into architecture/data-flow diagrams
 - Creates ML pipeline diagrams (stages, models, datasets, training loops)
 - Iteratively polishes typography, colors, arrows, icons, spacing
+- Provides a bundled MIT-licensed Tabler SVG icon inventory for common research-figure symbols
 
 ## What It Doesn't
 
 - It is not a draw.io replacement or affiliated with diagrams.net / JGraph
 - It doesn't guarantee one-shot perfection — high-fidelity reproduction takes multiple screenshot-feedback passes
+- Bundled SVG icons are vector assets, but their internals are not decomposed into draw.io primitive cells; use primitive recipes when full object-level editability matters
 
 ## Repository Layout
 
@@ -79,8 +81,10 @@ This is the intended workflow for high-fidelity scientific diagramming: convert 
 │   ├── SKILL.md                      # Main workflow
 │   ├── VERSION                       # Installed skill version marker
 │   ├── agents/openai.yaml
+│   ├── assets/icons/                 # Bundled MIT-licensed SVG icon set
 │   ├── references/
 │   │   ├── drawio-workflow.md
+│   │   ├── primitive-icons.md
 │   │   ├── reference-replication-protocol.md
 │   │   └── xml-authoring.md
 │   └── scripts/
@@ -151,6 +155,16 @@ Use the drawio-diagram-builder skill in this repository to draw a system archite
 
 All scripts are plain Python 3 — no pip packages needed.
 
+## Bundled Icon Assets
+
+The skill includes a curated Tabler Icons outline subset under:
+
+```text
+skills/drawio-diagram-builder/assets/icons/tabler/outline/
+```
+
+Read `skills/drawio-diagram-builder/assets/icons/ICON-MANIFEST.md` for the full inventory and license notes. These icons are useful for generic document, media, storage, model, routing, status, metric, and tool symbols. If exact reproduction needs a branded or paper-specific icon, supply the exact asset or record the approximation in `asset-ledger.md`.
+
 ### Check whether an installed skill is current
 
 ```powershell
@@ -182,6 +196,8 @@ python .\skills\drawio-diagram-builder\scripts\validate_replication_artifacts.py
 ```
 
 The stricter check fails if `defect-log.md` still contains placeholder screenshot rows.
+
+For iterative reference replication, keep `defect-log.md` append-only after the first rendered screenshot review. Generate, preview, screenshot, append the review, and then validate; do not run validation while another process is rewriting the same workdir.
 
 ### Generate + serve preview in one command
 

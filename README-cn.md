@@ -65,11 +65,13 @@ LLM 能写 draw.io XML，但一次成型的结果通常有问题：
 - 将代码仓库转化为架构/数据流图
 - 创建 ML 流水线图（阶段、模型、数据集、训练循环等）
 - 迭代精修排版、配色、箭头、图标、间距
+- 内置一批 MIT 许可的 Tabler SVG 图标，覆盖常见科研图符号
 
 ## 不适用场景
 
 - 它不是 draw.io 的替代品，也与 diagrams.net / JGraph 无关
 - 不保证一次性完美 — 高保真复现通常需要多轮截图反馈
+- 内置 SVG 图标是矢量资产，但其内部不会拆成 draw.io primitive 对象；如果要求图标内部也完全可编辑，请使用 primitive recipes
 
 ## 仓库结构
 
@@ -79,8 +81,10 @@ LLM 能写 draw.io XML，但一次成型的结果通常有问题：
 │   ├── SKILL.md                      # 主流程说明
 │   ├── VERSION                       # 已安装 skill 的版本标识
 │   ├── agents/openai.yaml
+│   ├── assets/icons/                 # 内置 MIT 许可 SVG 图标集
 │   ├── references/
 │   │   ├── drawio-workflow.md
+│   │   ├── primitive-icons.md
 │   │   ├── reference-replication-protocol.md
 │   │   └── xml-authoring.md
 │   └── scripts/
@@ -151,6 +155,16 @@ python <installed-skill-dir>\scripts\check_skill_update.py
 
 所有脚本都是纯 Python 3，无需安装 pip 依赖。
 
+## 内置图标资产
+
+skill 内置了一批 Tabler Icons outline SVG：
+
+```text
+skills/drawio-diagram-builder/assets/icons/tabler/outline/
+```
+
+完整清单和许可证说明见 `skills/drawio-diagram-builder/assets/icons/ICON-MANIFEST.md`。这些图标适合通用的文档、媒体、存储、模型、路由、状态、指标、工具类符号。如果高保真复刻需要品牌图标或论文专属符号，应提供精确资产，或在 `asset-ledger.md` 中记录为近似项。
+
 ### 检查已安装 skill 是否为最新版
 
 ```powershell
@@ -182,6 +196,8 @@ python .\skills\drawio-diagram-builder\scripts\validate_replication_artifacts.py
 ```
 
 严格模式会在 `defect-log.md` 仍然包含截图占位内容时失败。
+
+参考图迭代复刻时，第一次渲染截图复审后应把 `defect-log.md` 视为追加日志。正确顺序是：生成、预览、截图、追加复审记录，然后再验证；不要在其他进程重写同一工作目录时并发运行验证。
 
 ### 一键生成预览并启动服务
 

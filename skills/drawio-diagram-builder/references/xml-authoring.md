@@ -63,6 +63,33 @@ value="&lt;b&gt;&lt;font color=&quot;#b31313&quot;&gt;Title&lt;/font&gt;&lt;/b&g
 
 Escape `<`, `>`, and quotes inside attributes.
 
+### Safe rich-text helper for Python generators
+
+When generating XML with `xml.etree.ElementTree`, pass normal text as escaped plain text and pass only deliberate, agent-authored HTML snippets as raw label HTML. Let ElementTree escape XML attribute characters during serialization; do not double-escape normal source text.
+
+```python
+from html import escape
+
+
+def label(text: str, *, raw_html: bool = False) -> str:
+    """Return a draw.io html=1 label value.
+
+    raw_html=True is only for trusted tags you authored, such as
+    <b>, <i>, <sub>, <sup>, <font>, <br>, and <span>.
+    User/source text should stay raw_html=False.
+    """
+    return text if raw_html else escape(text, quote=True)
+
+
+plain = label('Route: <memory> & "tools"')
+formula = label(
+    '<i>z</i><sub>t</sub> = Fuse(<i>x</i><sub>t</sub>, Retrieve(<i>M</i><sub>t</sub>))',
+    raw_html=True,
+)
+```
+
+Use the returned string as the `value` attribute. ElementTree will serialize `<i>` as `&lt;i&gt;`, which is correct for draw.io `html=1` labels; draw.io then renders it as rich text. Use `raw_html=True` only when every tag and attribute is intentionally authored by the agent. If any part comes from the user, paper text, code, or logs, escape that part before interpolating it into a rich label.
+
 ## Edges and Arrows
 
 For straight or orthogonal edges:
@@ -114,11 +141,47 @@ Create a second curved connector in the opposite direction to form a recycle loo
 Use this decision order:
 
 1. Exact user-provided icon/logo.
-2. Exact downloadable icon from an allowed source, with provenance.
-3. Editable approximation using draw.io primitives.
-4. Simple symbolic substitute, explicitly disclosed.
+2. Bundled SVG icon from `assets/icons/`, if it semantically matches and the local license copy is present.
+3. Exact downloadable icon from an allowed source, with provenance.
+4. Editable approximation using draw.io primitives.
+5. Simple symbolic substitute, explicitly disclosed.
 
 For maximum editability, build icons from small rectangles, ellipses, lines, and text symbols. If using embedded SVG/image assets, keep the source file and explain that the icon itself is not fully primitive-editable.
+
+For common research-figure icons, use `primitive-icons.md` before designing from scratch. Reuse the same recipe, stroke, and scale across repeated instances so icons do not look like unrelated ad hoc drawings.
+
+### Embedding a bundled SVG icon
+
+Bundled SVG icons live under `assets/icons/tabler/outline/`. They are vector assets with a local MIT license copy, but their internals are not decomposed into draw.io primitives. Record each use in `asset-ledger.md`.
+
+Python helper:
+
+```python
+import base64
+from pathlib import Path
+
+
+def svg_data_uri(path: Path) -> str:
+    svg = path.read_bytes()
+    return "data:image/svg+xml;base64," + base64.b64encode(svg).decode("ascii")
+
+
+icon_uri = svg_data_uri(skill_dir / "assets" / "icons" / "tabler" / "outline" / "search.svg")
+style = (
+    "shape=image;html=1;imageAspect=1;verticalLabelPosition=bottom;"
+    f"image={icon_uri};"
+)
+```
+
+Use that style on a vertex with explicit geometry:
+
+```xml
+<mxCell id="retrieval_icon" value="" style="shape=image;html=1;imageAspect=1;image=data:image/svg+xml;base64,..." vertex="1" parent="1">
+  <mxGeometry x="100" y="100" width="24" height="24" as="geometry" />
+</mxCell>
+```
+
+Keep icon color consistent. Tabler SVGs use `currentColor`; if draw.io does not apply the desired color in preview, copy the SVG to a workdir-specific asset and replace `currentColor` with the required stroke color before embedding. Keep the original bundled SVG unchanged.
 
 ## Color and Style Matching
 

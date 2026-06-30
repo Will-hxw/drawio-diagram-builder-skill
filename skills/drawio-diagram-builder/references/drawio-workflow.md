@@ -119,6 +119,14 @@ When the user edits the diagram in this preview, the blue Save button triggers a
 
 This is the core mechanism. Without screenshots, the agent is guessing.
 
+Use one workdir state at a time. Do not run XML generation, preview generation, screenshot capture, and artifact validation concurrently against the same directory. The safe order is:
+
+1. write or patch `.drawio`
+2. regenerate preview HTML
+3. refresh browser and capture screenshot
+4. inspect screenshot and append `defect-log.md`
+5. run validators
+
 ### How to take the screenshot
 
 1. Start the preview server (see Section 5) — `serve_drawio_preview.py` or `python -m http.server`.
@@ -130,6 +138,25 @@ This is the core mechanism. Without screenshots, the agent is guessing.
    - Any browser automation that can navigate to a URL and capture pixels
 5. Save the screenshot and inspect it.
 
+### Canvas-only or deliberate crop capture
+
+Editor screenshots are useful for debugging, but they include diagrams.net chrome, sidebars, zoom state, and sometimes a clipped page. For final high-fidelity comparison, prefer one of these evidence types:
+
+- a full-page screenshot where the complete draw.io page is visible and not clipped
+- a deliberate crop that contains only the canvas/page and all visible diagram content
+- a draw.io PNG/SVG export if a local export path is available and the output matches the editable XML
+
+When using Playwright-style APIs, take a normal screenshot first, determine the canvas/page rectangle, then capture a clipped screenshot. Example shape:
+
+```javascript
+await page.screenshot({
+  path: "canvas-pass-3.png",
+  clip: { x: 280, y: 95, width: 1470, height: 805 }
+});
+```
+
+The numbers must come from the current browser screenshot, not from memory. If the crop cuts off any page edge, retake it with a larger viewport, lower draw.io zoom, or wider clip. Keep the editor screenshot when it explains UI state, but use the canvas-only or full-page evidence for fidelity claims.
+
 ### Iteration loop
 
 Each iteration should be narrow:
@@ -140,7 +167,9 @@ Each iteration should be narrow:
 4. Pick 3 to 5 visible issues.
 5. Patch only those objects in the XML.
 6. Regenerate the preview HTML (the server reads from the HTML file, not live XML — you MUST re-run `make_drawio_preview.py` after XML changes).
-7. Go to step 1.
+7. Append the pass to `defect-log.md`; after the first screenshot row exists, do not overwrite earlier review rows.
+8. Run validators only after generation and preview writes complete.
+9. Go to step 1.
 
 Useful issue categories:
 

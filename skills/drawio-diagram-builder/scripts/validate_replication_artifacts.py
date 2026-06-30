@@ -38,10 +38,19 @@ REQUIRED = {
         "# Defect Log",
         "## Pass 0 - Initial Plan Review",
         "## Pass 1 - Screenshot Review",
+        "## Screenshot Evidence",
         "## Red-Team Visual Audit",
         "## Remaining Gaps",
     ],
 }
+
+CAPTURE_TYPES = (
+    "full-page",
+    "canvas-only",
+    "deliberate-crop",
+    "editor-full-canvas",
+    "editor-partial",
+)
 
 
 def main() -> int:
@@ -83,6 +92,16 @@ def main() -> int:
                 errors.append("defect-log.md still contains pending screenshot review entries")
             if ".png" not in text and ".jpg" not in text and ".jpeg" not in text and ".webp" not in text:
                 errors.append("defect-log.md does not reference a screenshot image")
+            if not any(capture_type in text for capture_type in CAPTURE_TYPES):
+                errors.append(
+                    "defect-log.md does not record screenshot capture type "
+                    f"(expected one of: {', '.join(CAPTURE_TYPES)})"
+                )
+            if "editor-partial" in text and not any(
+                capture_type in text
+                for capture_type in ("full-page", "canvas-only", "deliberate-crop", "editor-full-canvas")
+            ):
+                errors.append("defect-log.md only records editor-partial evidence; final review needs full-canvas evidence")
 
     if errors:
         for error in errors:

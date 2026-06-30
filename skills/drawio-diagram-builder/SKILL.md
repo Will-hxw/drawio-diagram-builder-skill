@@ -36,7 +36,7 @@ Use this priority order:
 4. **draw.io MCP / `@drawio/mcp`** — only for small diagrams or quick opening. On Windows, large encoded URLs fail with `The data area passed to a system call is too small`; do not rely on `.url` shortcuts for large XML.
 5. **draw.io desktop/CLI export** — if installed. Treat as optional; always have the local iframe preview fallback.
 
-Load `references/drawio-workflow.md` for the detailed end-to-end process. Load `references/xml-authoring.md` when writing or repairing XML shapes, styles, edges, and text layout.
+Load `references/drawio-workflow.md` for the detailed end-to-end process. Load `references/xml-authoring.md` when writing or repairing XML shapes, styles, edges, and text layout. Load `references/primitive-icons.md` when a reference figure contains small modality, memory, warning, tool, clock, document, or other paper-style icons that should remain editable. Load `assets/icons/ICON-MANIFEST.md` when generic SVG icon assets would improve fidelity.
 
 For any reference-image replication request, load `references/reference-replication-protocol.md` before creating XML. This is mandatory. Treat high-fidelity replication as an evidence pipeline: observe the reference, specify geometry, author XML, render, compare, patch, and repeat. Do not start drawing from a reference image until the protocol's required intermediate artifacts exist.
 
@@ -67,7 +67,7 @@ Resolve all references relative to the skill directory.
    - Use one `mxfile` with one or more `diagram` pages.
    - Use explicit `mxGeometry` positions and sizes for high-fidelity work.
    - Split dense text into multiple cells when line-level alignment matters.
-   - Build important icons and arrows with editable draw.io primitives when possible.
+   - Build important icons and arrows with editable draw.io primitives when possible. Use `references/primitive-icons.md` for common research-figure icon recipes before inventing one-off symbols. Use bundled SVG icons from `assets/icons/` when fidelity matters more than primitive editability, and record them in `asset-ledger.md`.
    - Keep colors, strokes, fonts, and rounded corners consistent with the reference or requested style.
 
 5. **Preview without long URLs**
@@ -83,13 +83,13 @@ Resolve all references relative to the skill directory.
    - Fix a small batch of concrete issues per pass: text overflow, a bad arrow, one misaligned block, wrong color, incorrect icon, spacing, or missing component.
    - Regenerate the preview HTML, refresh the browser (add a cache-busting `?rev=N`), screenshot again, and repeat.
    - Name the specific defects being fixed rather than claiming broad perfection.
-   - For reference-image replication, append every screenshot pass to `defect-log.md` with: observed defect, reference evidence, XML cells to change, patch summary, and remaining risk.
+   - For reference-image replication, append every screenshot pass to `defect-log.md` with: observed defect, reference evidence, XML cells to change, patch summary, and remaining risk. After the first screenshot row exists, treat `defect-log.md` as append-only; generators may initialize it once but must not overwrite review history.
    - Before claiming improvement, run a red-team visual audit on the latest screenshot: inspect arrow direction, bracket orientation, connector crossings, box overlap, text overflow, z-order, and regressions from the latest patch.
    - If the first screenshot is structurally wrong, go back to `visual-spec.md` and `layout-grid.md` before making XML patches. A structural miss means an observation, coordinate, asset, or draw.io-rendering assumption was wrong.
 
 7. **Validate before handoff**
    - Run `scripts/validate_drawio.py <file>.drawio`.
-   - For reference-image replication, also run `scripts/validate_replication_artifacts.py <workdir> --require-screenshot-review` after the latest screenshot pass.
+   - For reference-image replication, also run `scripts/validate_replication_artifacts.py <workdir> --require-screenshot-review` after the latest screenshot pass. Run validation after generation/preview writes finish; do not run validators in parallel with scripts that write the same artifact directory.
    - Confirm: XML parses, page count is expected, no unwanted embedded raster images, captions included/removed as requested, latest screenshot reviewed.
    - Provide the `.drawio` path and the latest screenshot path. Leave the local preview server running if the user wants to continue iterating.
 
@@ -110,6 +110,8 @@ Resolve all references relative to the skill directory.
 - **Misaligned highlight bars**: Put highlight rectangles behind individual text lines, not behind the whole paragraph.
 - **Ugly loop arrows**: Use editable curved connectors or arcs, not large Unicode arrow glyphs, unless the reference explicitly uses glyphs.
 - **Wrong icon fidelity**: Build editable approximations from primitives, or ask for/download the exact icon when exactness matters.
+- **Missing generic icons**: Check `assets/icons/ICON-MANIFEST.md` before searching the web. Use the bundled MIT-licensed Tabler SVGs for generic document, media, storage, routing, tool, metric, and status icons.
+- **Rich text or formulas render literally**: Use the safe helper pattern in `references/xml-authoring.md`; escape normal text and use deliberate raw HTML only for agent-authored tags such as `<i>` or `<sub>`.
 - **Stale preview**: Add a query string such as `?rev=3`, regenerate preview HTML, or reopen the tab.
 - **Editor chrome hiding details**: Resize viewport, zoom inside draw.io, or export a PNG if draw.io CLI is available.
 - **Partial screenshot false positives**: If the screenshot clips any page edge, retake it with a larger viewport, a lower draw.io zoom, or a canvas-only crop before judging fidelity.
@@ -123,6 +125,8 @@ Resolve all references relative to the skill directory.
 - `scripts/make_drawio_preview.py`: build a local short-URL preview HTML that loads `.drawio` XML into diagrams.net via `postMessage`.
 - `scripts/serve_drawio_preview.py`: generate the preview HTML and serve it on `127.0.0.1` with an optional browser launch.
 - `scripts/validate_drawio.py`: parse and sanity-check `.drawio` files before handoff.
+- `assets/icons/ICON-MANIFEST.md`: local MIT-licensed SVG icon inventory and usage rules.
 - `references/drawio-workflow.md`: full professional workflow for prompt/paper/code/reference-image to editable draw.io.
+- `references/primitive-icons.md`: reusable editable primitive recipes for common research-figure icons.
 - `references/reference-replication-protocol.md`: low-freedom protocol for high-fidelity reference-image replication.
 - `references/xml-authoring.md`: XML, layout, style, edge, text, icon, and iteration patterns.
