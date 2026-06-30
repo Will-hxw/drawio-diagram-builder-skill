@@ -1,0 +1,181 @@
+# Reference Image Replication Protocol
+
+Use this protocol whenever the user provides a reference image and asks to reproduce, redraw, copy, replicate, or closely match it in draw.io.
+
+The goal is to stop the agent from guessing. The agent must first convert the image into a mechanical visual specification, then draw from that specification, then verify with screenshots.
+
+## Hard Rules
+
+1. Do not begin `.drawio` XML until the required intermediate artifacts exist.
+2. The primary output is a `.drawio` file. Preview HTML is derived and must not be treated as the source of truth.
+3. Never silently omit a visible component. If an icon, formula, symbol, or image cannot be reproduced exactly, add it to `asset-ledger.md`.
+4. Do not use "close enough" language for high-fidelity work. Record remaining mismatches in `defect-log.md`.
+5. Do not finish without at least one rendered screenshot review. For 100% reproduction requests, keep iterating until the user accepts or the remaining gaps are explicitly listed.
+
+## Required Artifacts
+
+Create these files next to the working `.drawio` file:
+
+```text
+visual-spec.md
+layout-grid.md
+asset-ledger.md
+defect-log.md
+```
+
+Run `scripts/validate_replication_artifacts.py <workdir>` before authoring XML and again before handoff.
+
+## 1. visual-spec.md
+
+This file captures what is visible.
+
+Required sections:
+
+```markdown
+# Visual Spec
+
+## Source
+- Reference image:
+- Target drawio:
+- Canvas:
+- Font policy:
+
+## Global Style
+- Background:
+- Primary font:
+- Stroke style:
+- Arrow style:
+- Color palette:
+
+## Regions
+| id | bbox x,y,w,h | role | visual notes |
+
+## Text Blocks
+| id | bbox x,y,w,h | text | font | alignment | priority |
+
+## Shapes
+| id | bbox x,y,w,h | type | fill | stroke | notes |
+
+## Connectors
+| id | from | to | route | arrowheads | label | notes |
+
+## Icons And Images
+| id | bbox x,y,w,h | meaning | exact/approx/missing | replacement plan |
+```
+
+For complex research figures, use region IDs such as:
+
+- `top_problem_statement`
+- `bottom_method_overview`
+- `memory_hierarchy`
+- `routing_controller`
+- `latent_workspace`
+- `multimodal_streams`
+
+## 2. layout-grid.md
+
+This file turns the visual spec into coordinates. Weak models need hard numbers.
+
+Required sections:
+
+```markdown
+# Layout Grid
+
+## Canvas
+- width:
+- height:
+- scale assumption:
+- margin:
+
+## Grid Lines
+| name | x | y | purpose |
+
+## Region Boxes
+| id | x | y | w | h |
+
+## Repeated Components
+| family | count | cell size | spacing | start x,y |
+
+## Drawing Order
+1. background regions
+2. containers
+3. internal shapes
+4. connectors
+5. text
+6. icons
+7. highlights/overlays
+```
+
+If the reference has a dense layout, do not rely on relative placement only. Use explicit x/y/w/h for each major container.
+
+## 3. asset-ledger.md
+
+This file prevents silent icon loss.
+
+Required sections:
+
+```markdown
+# Asset Ledger
+
+## Exact Assets
+| id | source | path | usage |
+
+## Editable Primitive Icons
+| id | built from | fidelity notes |
+
+## Approximations
+| id | reference meaning | approximation | why |
+
+## Missing Assets
+| id | reference meaning | blocking issue | user action needed |
+```
+
+If using an embedded raster image, state why editability is intentionally reduced.
+
+## 4. defect-log.md
+
+This file records screenshot-based refinement.
+
+Required sections:
+
+```markdown
+# Defect Log
+
+## Pass 0 - Initial Plan Review
+| issue | reference evidence | planned fix |
+
+## Pass 1 - Screenshot Review
+| issue | observed screenshot | reference evidence | XML cells to change | patch summary | status |
+
+## Remaining Gaps
+| gap | severity | reason | next action |
+```
+
+Each screenshot pass must add concrete defects. Avoid entries like "looks bad"; write "right-side multimodal panel is 18% too narrow" or "top dense-token bar missing icon cells".
+
+## Minimum Quality Gate
+
+Before handoff, verify:
+
+- The `.drawio` file exists and is the primary artifact.
+- `validate_drawio.py` passes.
+- `validate_replication_artifacts.py` passes.
+- Preview HTML was regenerated after the latest XML edit.
+- At least one screenshot was reviewed.
+- `defect-log.md` lists remaining mismatches.
+- No visible reference component was silently omitted.
+
+## Guidance For Weak Spatial Models
+
+If the model produces a messy first draft, do not continue patching randomly. Return to `layout-grid.md` and make the coordinate plan more explicit.
+
+Prefer a simpler but structurally faithful first draft over a visually dense but incoherent drawing:
+
+1. Correct canvas and major regions.
+2. Correct container hierarchy.
+3. Correct text placement.
+4. Correct arrows.
+5. Correct icons.
+6. Correct colors and polish.
+
+Only after the structure is correct should the agent increase visual density.
