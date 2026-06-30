@@ -21,6 +21,16 @@ def run(command: list[str]) -> None:
 
 def main() -> int:
     run([sys.executable, str(SKILL / "scripts" / "validate_drawio.py"), str(EXAMPLE)])
+    protocol_dir = ROOT / "tests" / "fixtures" / "replication-artifacts"
+    run([sys.executable, str(SKILL / "scripts" / "validate_replication_artifacts.py"), str(protocol_dir)])
+    run(
+        [
+            sys.executable,
+            str(SKILL / "scripts" / "validate_replication_artifacts.py"),
+            str(protocol_dir),
+            "--require-screenshot-review",
+        ]
+    )
     run(
         [
             sys.executable,

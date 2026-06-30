@@ -8,6 +8,17 @@ npx skills add Will-hxw/drawio-diagram-builder-skill
 
 > [中文版](README-cn.md)
 
+## Quick Install With An Agent
+
+Copy this prompt into Codex, Claude Code, or another local coding agent:
+
+```text
+Install and test the drawio-diagram-builder skill from:
+https://github.com/Will-hxw/drawio-diagram-builder-skill
+
+After installing, run its smoke test and tell me the exact skill path.
+```
+
 ## Prerequisites
 
 | Requirement | Why |
@@ -30,6 +41,8 @@ LLMs can write draw.io XML, but the first result is usually not right:
 - large diagrams crash on Windows with long-URL failures
 
 This skill gives the agent a repeatable workflow: create editable XML → preview through a local URL (not a giant encoded one) → screenshot → fix visible defects → repeat → validate.
+
+For reference-image replication, the skill now enforces a stricter protocol: the agent must write a visual spec, coordinate layout grid, asset ledger, and defect log before drawing. Final handoff must include a screenshot-reviewed defect log, not just valid XML.
 
 ## Example Output
 
@@ -59,11 +72,13 @@ This skill gives the agent a repeatable workflow: create editable XML → previe
 │   ├── agents/openai.yaml
 │   ├── references/
 │   │   ├── drawio-workflow.md
+│   │   ├── reference-replication-protocol.md
 │   │   └── xml-authoring.md
 │   └── scripts/
 │       ├── make_drawio_preview.py
 │       ├── serve_drawio_preview.py
-│       └── validate_drawio.py
+│       ├── validate_drawio.py
+│       └── validate_replication_artifacts.py
 ├── assets/                           # README images
 ├── examples/minimal.drawio
 ├── tests/smoke_test.py
@@ -125,6 +140,22 @@ python .\skills\drawio-diagram-builder\scripts\validate_drawio.py .\examples\min
 ```
 
 Flags embedded raster images by default. Use `--allow-raster` only when image assets are intentional.
+
+### Validate reference-replication artifacts
+
+Before drawing from a reference image:
+
+```powershell
+python .\skills\drawio-diagram-builder\scripts\validate_replication_artifacts.py .\workdir
+```
+
+Before final handoff, after a rendered screenshot was reviewed:
+
+```powershell
+python .\skills\drawio-diagram-builder\scripts\validate_replication_artifacts.py .\workdir --require-screenshot-review
+```
+
+The stricter check fails if `defect-log.md` still contains placeholder screenshot rows.
 
 ### Generate + serve preview in one command
 

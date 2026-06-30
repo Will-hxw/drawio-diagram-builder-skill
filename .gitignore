@@ -1,6 +1,8 @@
 __pycache__/
 *.py[cod]
 .pytest_cache/
+.playwright-mcp/
+e2e/
 .DS_Store
 Thumbs.db
 drawio-preview.html
