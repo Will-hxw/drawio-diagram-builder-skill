@@ -19,6 +19,8 @@ https://github.com/Will-hxw/drawio-diagram-builder-skill
 After installing, run its smoke test and tell me the exact skill path.
 ```
 
+After installation, ask the agent to open the installed `SKILL.md` and confirm that it mentions `reference-replication-protocol.md`. If it does not, the agent is using an old copy of the skill.
+
 ## Prerequisites
 
 | Requirement | Why |
@@ -43,6 +45,8 @@ LLMs can write draw.io XML, but the first result is usually not right:
 This skill gives the agent a repeatable workflow: create editable XML → preview through a local URL (not a giant encoded one) → screenshot → fix visible defects → repeat → validate.
 
 For reference-image replication, the skill now enforces a stricter protocol: the agent must write a visual spec, coordinate layout grid, asset ledger, and defect log before drawing. Final handoff must include a screenshot-reviewed defect log, not just valid XML.
+
+This is the intended workflow for high-fidelity scientific diagramming: convert the reference into observable geometry, render the editable draw.io result, compare pixels and layout, then fix concrete mismatches.
 
 ## Example Output
 
@@ -114,6 +118,8 @@ cp -R drawio-diagram-builder-skill/skills/drawio-diagram-builder "$HOME/.codex/s
 ```
 
 Restart the agent after copying.
+
+To verify the installed copy, ask the agent to read its active skill file and report the path. It should contain `references/reference-replication-protocol.md`; otherwise reinstall or remove the stale copy from the agent's skill directory.
 
 ## Example Prompts
 

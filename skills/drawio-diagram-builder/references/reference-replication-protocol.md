@@ -2,7 +2,7 @@
 
 Use this protocol whenever the user provides a reference image and asks to reproduce, redraw, copy, replicate, or closely match it in draw.io.
 
-The goal is to stop the agent from guessing. The agent must first convert the image into a mechanical visual specification, then draw from that specification, then verify with screenshots.
+The goal is to make high-fidelity drawing an evidence-driven engineering process. First convert the image into a mechanical visual specification, then draw from that specification, then verify with rendered screenshots.
 
 ## Hard Rules
 
@@ -84,7 +84,7 @@ For complex research figures, use region IDs such as:
 
 ## 2. layout-grid.md
 
-This file turns the visual spec into coordinates. Weak models need hard numbers.
+This file turns the visual spec into coordinates. High-fidelity drawing needs explicit geometry, not vague relative placement.
 
 Required sections:
 
@@ -177,9 +177,9 @@ Before handoff, verify:
 
 For a "100% reproduction" request, the defect log must not claim perfection. It must either show that no visible mismatches remain after screenshot review, or list the exact remaining mismatches and the next patch targets.
 
-## Guidance For Weak Spatial Models
+## High-Fidelity Replication Discipline
 
-If the model produces a messy first draft, do not continue patching randomly. Return to `layout-grid.md` and make the coordinate plan more explicit.
+If the first draft is messy, do not continue patching randomly. Return to `visual-spec.md` and `layout-grid.md`, identify which observation or coordinate assumption failed, and repair the plan before editing XML again.
 
 Prefer a simpler but structurally faithful first draft over a visually dense but incoherent drawing:
 
@@ -192,7 +192,7 @@ Prefer a simpler but structurally faithful first draft over a visually dense but
 
 Only after the structure is correct should the agent increase visual density.
 
-When a generated result looks bad, inspect these failure points first:
+When a generated result looks bad, inspect these first-principles failure points:
 
 - canvas scale or browser zoom makes the page clipped
 - headings are too large and wrap unexpectedly
@@ -201,3 +201,5 @@ When a generated result looks bad, inspect these failure points first:
 - connector routes use straight lines where the reference uses loops
 - icons were silently replaced with generic symbols
 - background fills, shadows, and dashed borders were skipped
+
+Use the defect log as an engineering ledger: every visible mismatch should map to either a missing observation, an incorrect coordinate, an unavailable asset, or a draw.io rendering difference.

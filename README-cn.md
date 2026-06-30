@@ -19,6 +19,8 @@ https://github.com/Will-hxw/drawio-diagram-builder-skill
 安装完成后运行 smoke test，并告诉我实际安装到哪个 skill 路径。
 ```
 
+安装后再让 agent 打开它实际加载的 `SKILL.md`，确认里面提到 `reference-replication-protocol.md`。如果没有，说明它读到的是旧版 skill。
+
 ## 前置依赖
 
 | 依赖 | 原因 |
@@ -43,6 +45,8 @@ LLM 能写 draw.io XML，但一次成型的结果通常有问题：
 这个技能提供一套可复现的流程：生成可编辑 XML → 本地短 URL 预览（非巨型编码 URL）→ 截图 → 修正可见缺陷 → 重复 → 验证。
 
 针对参考图复刻，技能会走更严格的协议：agent 必须先写视觉规格、坐标网格、素材台账和缺陷日志，再开始画 `.drawio`。最终交付时必须证明已经截图复审，而不是只生成一份能解析的 XML。
+
+这是高保真科研绘图本来就应该遵循的工作流：把参考图转化为可观察的几何规格，渲染可编辑的 draw.io 结果，比对版面和像素，再修复具体差异。
 
 ## 产出示例
 
@@ -114,6 +118,8 @@ cp -R drawio-diagram-builder-skill/skills/drawio-diagram-builder "$HOME/.codex/s
 ```
 
 安装后重启 agent。
+
+为避免读到旧版本，请让 agent 报告它实际读取的 skill 路径，并确认 `SKILL.md` 中包含 `references/reference-replication-protocol.md`。如果没有，请重新安装或删除旧 skill 目录。
 
 ## 示例 Prompt
 

@@ -38,7 +38,7 @@ Use this priority order:
 
 Load `references/drawio-workflow.md` for the detailed end-to-end process. Load `references/xml-authoring.md` when writing or repairing XML shapes, styles, edges, and text layout.
 
-For any reference-image replication request, load `references/reference-replication-protocol.md` before creating XML. This is mandatory. Do not start drawing from a reference image until the protocol's required intermediate artifacts exist.
+For any reference-image replication request, load `references/reference-replication-protocol.md` before creating XML. This is mandatory. Treat high-fidelity replication as an evidence pipeline: observe the reference, specify geometry, author XML, render, compare, patch, and repeat. Do not start drawing from a reference image until the protocol's required intermediate artifacts exist.
 
 Resolve all references relative to the skill directory.
 
@@ -84,7 +84,7 @@ Resolve all references relative to the skill directory.
    - Regenerate the preview HTML, refresh the browser (add a cache-busting `?rev=N`), screenshot again, and repeat.
    - Name the specific defects being fixed rather than claiming broad perfection.
    - For reference-image replication, append every screenshot pass to `defect-log.md` with: observed defect, reference evidence, XML cells to change, patch summary, and remaining risk.
-   - If the first screenshot is structurally wrong, go back to `visual-spec.md` and `layout-grid.md` before making random XML patches.
+   - If the first screenshot is structurally wrong, go back to `visual-spec.md` and `layout-grid.md` before making XML patches. A structural miss means an observation, coordinate, asset, or draw.io-rendering assumption was wrong.
 
 7. **Validate before handoff**
    - Run `scripts/validate_drawio.py <file>.drawio`.
@@ -99,7 +99,7 @@ Resolve all references relative to the skill directory.
 - Keep a working copy and a handoff copy only when useful; keep them synchronized.
 - Never claim the diagram is complete without visual verification (a screenshot).
 - When the user asks for "100% reproduction", treat that as an iterative standard: keep finding and fixing visible differences until the user accepts or identifies next issues.
-- For reference-image replication, never skip the intermediate artifacts. A low-quality first draw usually means the visual-spec and layout-grid were too vague.
+- For reference-image replication, never skip the intermediate artifacts. A low-quality first draw usually means the observation inventory, coordinate plan, asset ledger, or rendering assumptions were underspecified.
 
 ## Common Failure Handling
 
