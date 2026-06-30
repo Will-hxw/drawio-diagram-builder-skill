@@ -34,7 +34,11 @@ Use this priority order:
 4. **draw.io MCP / `@drawio/mcp`** — only for small diagrams or quick opening. On Windows, large encoded URLs fail with `The data area passed to a system call is too small`; do not rely on `.url` shortcuts for large XML.
 5. **draw.io desktop/CLI export** — if installed. Treat as optional; always have the local iframe preview fallback.
 
-Load `references/drawio-workflow.md` for the detailed end-to-end process. Load `references/xml-authoring.md` when writing or repairing XML shapes, styles, edges, and text layout. Resolve both relative to the skill directory.
+Load `references/drawio-workflow.md` for the detailed end-to-end process. Load `references/xml-authoring.md` when writing or repairing XML shapes, styles, edges, and text layout.
+
+For any reference-image replication request, load `references/reference-replication-protocol.md` before creating XML. This is mandatory. Do not start drawing from a reference image until the protocol's required intermediate artifacts exist.
+
+Resolve all references relative to the skill directory.
 
 ## Standard Workflow
 
@@ -50,8 +54,14 @@ Load `references/drawio-workflow.md` for the detailed end-to-end process. Load `
    - For reference-image replication, create a coordinate-level inventory: bounding boxes, text lines, highlight bars, connectors, loops, and repeated blocks.
    - For paper figures, preserve exact method terminology and distinguish data construction, training, evaluation, inference, and serving flows.
    - Decide what must be exact and what can be approximated.
+   - For reference-image replication, write the required protocol artifacts before XML:
+     - `visual-spec.md`
+     - `layout-grid.md`
+     - `asset-ledger.md`
+     - `defect-log.md`
 
 4. **Author the `.drawio` file**
+   - The `.drawio` file is the primary artifact. Preview HTML is only a derived artifact.
    - Use one `mxfile` with one or more `diagram` pages.
    - Use explicit `mxGeometry` positions and sizes for high-fidelity work.
    - Split dense text into multiple cells when line-level alignment matters.
@@ -70,6 +80,7 @@ Load `references/drawio-workflow.md` for the detailed end-to-end process. Load `
    - Fix a small batch of concrete issues per pass: text overflow, a bad arrow, one misaligned block, wrong color, incorrect icon, spacing, or missing component.
    - Regenerate the preview HTML, refresh the browser (add a cache-busting `?rev=N`), screenshot again, and repeat.
    - Name the specific defects being fixed rather than claiming broad perfection.
+   - For reference-image replication, append every screenshot pass to `defect-log.md` with: observed defect, reference evidence, XML cells to change, patch summary, and remaining risk.
 
 7. **Validate before handoff**
    - Run `scripts/validate_drawio.py <file>.drawio`.
@@ -83,6 +94,7 @@ Load `references/drawio-workflow.md` for the detailed end-to-end process. Load `
 - Keep a working copy and a handoff copy only when useful; keep them synchronized.
 - Never claim the diagram is complete without visual verification (a screenshot).
 - When the user asks for "100% reproduction", treat that as an iterative standard: keep finding and fixing visible differences until the user accepts or identifies next issues.
+- For reference-image replication, never skip the intermediate artifacts. A low-quality first draw usually means the visual-spec and layout-grid were too vague.
 
 ## Common Failure Handling
 
@@ -103,4 +115,5 @@ Load `references/drawio-workflow.md` for the detailed end-to-end process. Load `
 - `scripts/serve_drawio_preview.py`: generate the preview HTML and serve it on `127.0.0.1` with an optional browser launch.
 - `scripts/validate_drawio.py`: parse and sanity-check `.drawio` files before handoff.
 - `references/drawio-workflow.md`: full professional workflow for prompt/paper/code/reference-image to editable draw.io.
+- `references/reference-replication-protocol.md`: low-freedom protocol for high-fidelity reference-image replication.
 - `references/xml-authoring.md`: XML, layout, style, edge, text, icon, and iteration patterns.
