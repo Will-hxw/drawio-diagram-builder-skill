@@ -49,7 +49,6 @@ This skill gives the agent a repeatable workflow: create editable XML → previe
 
 - It is not a draw.io replacement or affiliated with diagrams.net / JGraph
 - It doesn't guarantee one-shot perfection — high-fidelity reproduction takes multiple screenshot-feedback passes
-- **⚠️ Do not use for sensitive/confidential diagrams** — the preview loads `https://embed.diagrams.net/` (a third-party hosted page)
 
 ## Repository Layout
 

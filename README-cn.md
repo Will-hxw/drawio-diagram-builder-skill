@@ -1,6 +1,6 @@
 # Research Draw.io Diagram Skill
 
-面向 AI 编程助手的可移植技能包，用于根据论文、Prompt、代码仓库或截图生成适合发表的、可编辑的 diagrams.net / draw.io 图表。
+用于根据论文、Prompt、代码仓库或截图生成适合发表的、可编辑的 diagrams.net / draw.io 图表。
 
 ```bash
 npx skills add Will-hxw/drawio-diagram-builder-skill
@@ -49,7 +49,6 @@ LLM 能写 draw.io XML，但一次成型的结果通常有问题：
 
 - 它不是 draw.io 的替代品，也与 diagrams.net / JGraph 无关
 - 不保证一次性完美 — 高保真复现通常需要多轮截图反馈
-- **⚠️ 不要用于敏感/机密图表** — 预览页面通过 `https://embed.diagrams.net/`（第三方托管页面）加载
 
 ## 仓库结构
 
@@ -116,8 +115,6 @@ cp -R drawio-diagram-builder-skill/skills/drawio-diagram-builder "$HOME/.codex/s
 ```
 
 ## 辅助脚本
-
-所有脚本均为纯 Python 3，无需 pip 依赖。
 
 ### 校验 `.drawio` 文件
 
