@@ -70,6 +70,13 @@ For prompt-only or freeform diagrams:
 4. Establish a style contract: font, palette, density, corner radius, stroke, icon family, and caption policy.
 5. Mark uncertain content or speculative relationships so the final handoff can disclose them.
 
+For top-conference computer-science figures:
+
+1. Load `topconf-paper-style.md`.
+2. If the user does not provide a style reference, use the bundled images in `../assets/reference-images/` as style/layout fallback only.
+3. Preserve the user's scientific content. Do not invent modules, losses, datasets, metrics, or paper claims to fill a polished layout.
+4. Choose the closest figure grammar: method overview, multi-stage training pipeline, model architecture, prompt/data construction workflow, evaluation/benchmark flow, or online serving path.
+
 ## 3. Layout Planning
 
 Use a coordinate plan for high-fidelity diagrams:
@@ -96,6 +103,7 @@ For publication-style figures:
 - Use full canvas bands rather than floating cards unless the reference uses cards.
 - Keep text inside shapes; avoid overflow=visible for dense paragraphs unless the shape intentionally has no visible boundary.
 - Use consistent line heights. Draw.io text rendering can differ from browser text, so verify with screenshots.
+- Use top-conference conventions when requested: panel labels, dashed group boxes, token/matrix miniatures, compact legends, muted fills, and explicit equations near the relevant blocks.
 
 ## 4. Authoring Approach
 
