@@ -36,7 +36,7 @@ Use this priority order:
 4. **draw.io MCP / `@drawio/mcp`** — only for small diagrams or quick opening. On Windows, large encoded URLs fail with `The data area passed to a system call is too small`; do not rely on `.url` shortcuts for large XML.
 5. **draw.io desktop/CLI export** — if installed. Treat as optional; always have the local iframe preview fallback.
 
-Load `references/drawio-workflow.md` for the detailed end-to-end process. Load `references/self-supervision-and-intake.md` for any non-trivial diagram, mixed prompt-plus-image input, project-context diagram, or iterative visual repair. Load `references/topconf-paper-style.md` when the user asks for a computer-science paper, top-conference, camera-ready, method, ML pipeline, multimodal architecture, benchmark, or polished research figure, especially when the user gives weak or missing style references. Load `references/xml-authoring.md` when writing or repairing XML shapes, styles, edges, and text layout. Load `references/primitive-icons.md` when a reference figure contains small modality, memory, warning, tool, clock, document, or other paper-style icons that should remain editable. Load `assets/icons/ICON-MANIFEST.md` when generic SVG icon assets would improve fidelity.
+Load `references/drawio-workflow.md` for the detailed end-to-end process. Load `references/self-supervision-and-intake.md` for any non-trivial diagram, mixed prompt-plus-image input, project-context diagram, or iterative visual repair. Load `references/style-extraction.md` when the user provides reference images as style guides — mandatory before authoring XML; you must extract palette, typography, spacing, and arrow grammar before drawing. Load `references/topconf-paper-style.md` when the user asks for a computer-science paper, top-conference, camera-ready, method, ML pipeline, multimodal architecture, benchmark, or polished research figure, especially when the user gives weak or missing style references. Load `references/xml-authoring.md` when writing or repairing XML shapes, styles, edges, and text layout. Load `references/xml-preflight.md` before rendering any diagram — it documents static XML quality checks that catch computable defects (arrow-box collisions, text overflow, spacing variance, color chaos) without a screenshot. Load `references/primitive-icons.md` when a reference figure contains small modality, memory, warning, tool, clock, document, or other paper-style icons that should remain editable. Load `assets/icons/ICON-MANIFEST.md` when generic SVG icon assets would improve fidelity.
 
 For any reference-image replication request, load `references/reference-replication-protocol.md` before creating XML. This is mandatory. Treat high-fidelity replication as an evidence pipeline: observe the reference, specify geometry, author XML, render, compare, patch, and repeat. Do not start drawing from a reference image until the protocol's required intermediate artifacts exist.
 
@@ -52,6 +52,7 @@ Resolve all references relative to the skill directory.
    - Classify every input by role: content source, structure source, style source, layout source, or asset source. A style reference does not automatically define content or connector semantics.
    - For top-conference paper figures with weak or missing style input, use `references/topconf-paper-style.md` and the bundled images under `assets/reference-images/` as style/layout fallback only. Do not invent scientific content to fill the layout.
    - If exact assets are needed, locate them locally or ask for them. Do not silently replace a required logo/icon with an unrelated one.
+   - **If reference images were provided as style guides, extract their visual language BEFORE drawing.** "Looking" at a reference is not extraction. Load and follow `references/style-extraction.md`. Fill every row of the extraction table — palette hex codes, font sizes, corner radii, stroke widths, spacing rhythms. The extracted values become your mandatory style contract. Do not skip this. When your diagram looks nothing like the reference, the root cause is almost always: no style extraction was done.
 
 3. **Build the diagram brief and visual specification**
    - For mixed inputs, prompt-only diagrams, paper/code diagrams, or any complex task, create a brief with: user goal, source inventory, requirement traceability, semantic model, style contract, and open assumptions. Use `references/self-supervision-and-intake.md`.
@@ -73,6 +74,11 @@ Resolve all references relative to the skill directory.
    - Split dense text into multiple cells when line-level alignment matters.
    - Build important icons and arrows with editable draw.io primitives when possible. Use `references/primitive-icons.md` for common research-figure icon recipes before inventing one-off symbols. Use bundled SVG icons from `assets/icons/` when fidelity matters more than primitive editability, and record them in `asset-ledger.md`.
    - Keep colors, strokes, fonts, and rounded corners consistent with the reference or requested style.
+   - **Before rendering, run the pre-flight checker.** You cannot perceive visual quality from XML alone — arrow-box collisions, text overflow, font-box mismatches, spacing chaos, and palette scatter are invisible to you but computable from geometry:
+     ```powershell
+     python <skill-dir>/scripts/validate_visual_quality.py <file>.drawio
+     ```
+     **Zero FAILs required before the first preview HTML is generated.** Review every WARN. If the checker exits non-zero, fix and re-run. Do not skip this step. Load `references/xml-preflight.md` for the full explanation of each rule.
 
 5. **Preview without long URLs**
    - **Preferred**: run `scripts/serve_drawio_preview.py <file>.drawio --port 8765`. It generates the preview HTML, starts a server, and opens the browser.
@@ -82,24 +88,44 @@ Resolve all references relative to the skill directory.
    - Take a screenshot of the rendered diagram.
 
 6. **Iterate from evidence**
+   - **HARD GATE: Minimum 3 screenshot→inventory→fix→verify cycles for any high-fidelity or user-critical diagram.** A first draft is never acceptable. The only exception is if the user explicitly says "stop here." Record every cycle in the defect log.
+   - Each cycle follows: screenshot → complete defect inventory (all 9 zones) → fix ALL P0/P1 → regenerate → verify each fix.
    - Compare the screenshot against the reference or requested spec.
-   - The screenshot must show the full draw.io canvas or a deliberate crop of the full canvas. Do not judge high-fidelity work from a partial viewport where the diagram is clipped.
-   - Run a self-supervision pass on the latest screenshot against the brief or references: requirement audit, semantic audit, visual hygiene audit, style audit, and regression audit.
-   - Treat these as blockers, not polish: missing required components, wrong arrow direction, wrong fan-in/fan-out, connectors hiding text, text overflow, accidental overlap, incoherent icons, or explicit style violations.
-   - Fix a small batch of concrete issues per pass: text overflow, a bad arrow, one misaligned block, wrong color, incorrect icon, spacing, or missing component.
+   - **The screenshot MUST be a canvas-only crop, NOT the full browser window.** A full browser screenshot includes the diagrams.net sidebar, toolbar, and chrome — this shrinks the diagram so much that you cannot read text, see icon details, or spot spacing defects. The screenshot is USELESS for quality inspection if the diagram occupies less than 80% of the image.
+   - **How to crop:** After taking a full-page screenshot, locate the draw.io canvas/page rectangle (the white area where your diagram renders). Crop to that rectangle. With Playwright: `await page.screenshot({ clip: { x, y, width, height } })`. The crop coordinates must come from the CURRENT screenshot, not from memory or XML — inspect the screenshot, find the canvas edges, then crop.
+   - **If you cannot crop, zoom the viewport:** Navigate the browser to a larger viewport (e.g., 1920×1400 or higher) and zoom out (Ctrl+-) until the full canvas is visible, then screenshot. A zoomed-out full-canvas view is better than a clipped browser chrome view.
+   - **Invalid screenshot → do not proceed to audit.** If the screenshot shows more browser UI than diagram, retake it. A blurry full-browser shot where you cannot read text is not evidence — it is a waste of an iteration cycle.
+   - **MANDATORY: Create a COMPLETE defect inventory scanning all 9 zones (text, arrows, boxes, spacing, color, typography, layout, icons, style coherence) BEFORE fixing anything.** Minimum 30 concrete defects. A garbage first draft always has 30+ visible problems. If you found fewer, you are not scanning systematically. Load `references/self-supervision-and-intake.md` Section 4.1 for the zone-by-zone scanning guide.
+   - **MANDATORY: Fix ALL P0 and P1 defects (not just the most important ones), then verify each fix against the new screenshot.** If your inventory found 40 P0/P1 items, fix all 40. Mark each as FIXED/NOT FIXED/PARTIAL/REGRESSION. A defect marked NOT FIXED means you failed — fix it again.
+   - Run all 5 dimensions of the self-supervision audit to cross-check your inventory: requirement audit, semantic audit, visual hygiene audit, style audit, and regression audit.
    - Regenerate the preview HTML, refresh the browser (add a cache-busting `?rev=N`), screenshot again, and repeat.
    - Name the specific defects being fixed rather than claiming broad perfection.
-   - For reference-image replication, append every screenshot pass to `defect-log.md` with: observed defect, reference evidence, XML cells to change, patch summary, and remaining risk. After the first screenshot row exists, treat `defect-log.md` as append-only; generators may initialize it once but must not overwrite review history.
-   - Before claiming improvement, run a red-team visual audit on the latest screenshot: inspect arrow direction, bracket orientation, connector crossings, box overlap, text overflow, z-order, and regressions from the latest patch.
-   - If the user points out an obvious screenshot defect, treat it as a self-supervision failure: re-open the source/reference, correct the interpretation, patch the diagram, screenshot a focused crop plus the full canvas, and record the lesson in the defect log.
+   - For reference-image replication, append every screenshot pass to `defect-log.md` with: observed defect, reference evidence, XML cells to change, patch summary, and remaining risk. After the first screenshot row exists, treat `defect-log.md` as append-only.
+   - **Before claiming improvement, run a red-team role switch on the latest screenshot.** You are no longer the author. You are a hostile reviewer. Re-scan all 9 zones with fresh eyes. Minimum 30 findings required. If the self-supervision found 40 defects and red-team only finds 5 more, you are colluding, not auditing.
+   - If the user points out an obvious screenshot defect, treat it as a self-supervision failure: re-open the source/reference, correct the interpretation, patch the diagram, screenshot a focused crop plus the full canvas, and record the lesson in the defect log. Then re-run the red-team audit — a user-found defect proves you missed others.
    - If the first screenshot is structurally wrong, go back to `visual-spec.md` and `layout-grid.md` before making XML patches. A structural miss means an observation, coordinate, asset, or draw.io-rendering assumption was wrong.
 
 7. **Validate before handoff**
+   - **HARD GATE: Self-score card (mandatory).** Before handing off, score your own diagram on a 1-10 scale:
+     | Dimension | Score (1-10) |
+     |-----------|-------------|
+     | Text readability | /10 |
+     | Arrow accuracy | /10 |
+     | Color coherence | /10 |
+     | Layout consistency | /10 |
+     | Style match to reference/spec | /10 |
+     | **TOTAL** | **/50** |
+     - **TOTAL < 30 or any dimension ≤ 4 → BLOCKED. Continue iterating. Do not ask — just fix it.**
+     - **TOTAL 30–39 → borderline. List 5+ specific things you'd fix next. Only handoff if user asked for quick result.**
+     - **TOTAL ≥ 40 and no dimension ≤ 5 → allowed.**
+     - Each point deducted must cite concrete, screenshot-visible evidence.
+   - **HARD GATE: Red-team audit completed and logged.** The red-team pass must find at least 10 issues. If it found fewer, you did not try hard enough.
+   - **HARD GATE: At least 3 screenshot→review→fix cycles documented in defect log.**
    - Run `scripts/validate_drawio.py <file>.drawio`.
    - Use `scripts/validate_drawio.py --strict --json <file>.drawio` when a CI-friendly final gate is useful, or when warnings such as off-page vertices or placeholder-like labels should block handoff.
    - For reference-image replication, also run `scripts/validate_replication_artifacts.py <workdir> --require-screenshot-review` after the latest screenshot pass. Run validation after generation/preview writes finish; do not run validators in parallel with scripts that write the same artifact directory.
    - Confirm: XML parses, page count is expected, ids and references are valid, required geometry exists, no unwanted embedded raster or external images are present, captions included/removed as requested, latest screenshot reviewed.
-   - Provide the `.drawio` path and the latest screenshot path. Leave the local preview server running if the user wants to continue iterating.
+   - Provide the `.drawio` path, the latest screenshot path, the self-score card, and the defect log summary. Leave the local preview server running if the user wants to continue iterating.
 
 ## Editing Rules
 
@@ -108,12 +134,17 @@ Resolve all references relative to the skill directory.
 - Keep a working copy and a handoff copy only when useful; keep them synchronized.
 - Never claim the diagram is complete without visual verification (a screenshot).
 - Never claim the diagram is complete if the latest screenshot still has a visible P0/P1 blocker: wrong connector semantics, hidden text, clipped text, missing required content, accidental overlap, or a direct violation of the user's prompt/style reference.
+- Never claim the diagram is complete if any hard gate is unmet: style not extracted from references, fewer than 3 screenshot cycles, no complete defect inventory across 9 zones, no fix verification, no red-team audit (≥ 20 findings), self-score below 40, or self-score has any dimension ≤ 5.
 - When the user asks for "100% reproduction", treat that as an iterative standard: keep finding and fixing visible differences until the user accepts or identifies next issues.
 - For reference-image replication, never skip the intermediate artifacts. A low-quality first draw usually means the observation inventory, coordinate plan, asset ledger, or rendering assumptions were underspecified.
 
 ## Common Failure Handling
 
 - **Windows long URL failure**: Do not open large diagrams through `.url` files or huge `#create=` URLs. Use local preview HTML with postMessage.
+- **Skipping pre-flight**: The most common cause of a garbage first screenshot. If you did not run `validate_visual_quality.py` before rendering, you deserve the disaster you see. Run it now, fix the FAILs, regenerate.
+- **First screenshot is terrible**: This means the pre-flight was skipped or its warnings were ignored. Go back to step 4, run `validate_visual_quality.py`, fix every FAIL, review every WARN, then re-render.
+- **Full browser screenshot (with sidebar/toolbar)**: The diagram is too small to read. CROP TO THE CANVAS. Locate the white draw.io page area in the screenshot, crop to its (x, y, w, h). If you cannot crop, resize viewport to 1920×1400, zoom out (Ctrl+-), and retake. A screenshot where the diagram is < 80% of the image is invalid for quality inspection.
+- **"I only found 8 defects"**: You are not scanning all 9 zones systematically. Minimum 30. Start over from zone 1, pixel by pixel. Every cell, every edge, every gap.
 - **Saving from preview**: The local preview cannot silently overwrite local files (browser sandbox). The blue Save button triggers a `.drawio` download. Move the downloaded file back to your working path before further edits.
 - **Text overlap or overflow**: Split paragraphs into smaller text cells, reduce font size, increase container width, set stable geometry, and screenshot-check.
 - **Misaligned highlight bars**: Put highlight rectangles behind individual text lines, not behind the whole paragraph.
@@ -134,10 +165,13 @@ Resolve all references relative to the skill directory.
 - `scripts/make_drawio_preview.py`: build a local short-URL preview HTML that loads `.drawio` XML into diagrams.net via `postMessage`.
 - `scripts/serve_drawio_preview.py`: generate the preview HTML and serve it on `127.0.0.1` with an optional browser launch.
 - `scripts/validate_drawio.py`: parse, structurally validate, count labels/assets, and sanity-check `.drawio` files before handoff. Supports `--strict` and `--json`.
+- `scripts/validate_visual_quality.py`: **pre-render static checker.** Parses `.drawio` XML and computes visual defects without rendering — arrow-box collisions, text overflow risk, font proportionality, spacing variance, color incoherence, element overlap, orphan labels, font size anomalies, and edge density. Run before first preview. Zero FAILs required. Supports `--json`, `--strict`, `--rules`.
 - `assets/icons/ICON-MANIFEST.md`: local MIT-licensed SVG icon inventory and usage rules.
 - `assets/reference-images/REFERENCE-IMAGES.md`: bundled top-conference-style figure references for style fallback.
 - `references/drawio-workflow.md`: full professional workflow for prompt/paper/code/reference-image to editable draw.io.
-- `references/self-supervision-and-intake.md`: mixed-input intake, diagram brief, semantic connector audit, and screenshot self-supervision gate.
+- `references/self-supervision-and-intake.md`: mixed-input intake, diagram brief, mandatory 5-dimension audit, red-team role switch, self-scoring card, and hard gates before handoff.
+- `references/xml-preflight.md`: explains every pre-render static check — what it catches, why it matters, and why XML alone blinds the agent to these defects.
+- `references/style-extraction.md`: mandatory style extraction protocol — how to sample palettes, measure typography, identify layout rhythm, and extract arrow grammar from reference images before drawing. Use whenever the user provides style reference images.
 - `references/topconf-paper-style.md`: top-conference computer-science figure style, fallback reference selection, and paper-quality bar.
 - `references/primitive-icons.md`: reusable editable primitive recipes for common research-figure icons.
 - `references/reference-replication-protocol.md`: low-freedom protocol for high-fidelity reference-image replication.

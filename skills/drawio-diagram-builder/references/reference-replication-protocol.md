@@ -11,11 +11,13 @@ The goal is to make high-fidelity drawing an evidence-driven engineering process
 3. Never silently omit a visible component. If an icon, formula, symbol, or image cannot be reproduced exactly, add it to `asset-ledger.md`.
 4. Do not reproduce only the geometry. Identify connector semantics: source, target, direction, fan-in/fan-out, feedback, grouping, and arrowhead placement.
 5. Do not use "close enough" language for high-fidelity work. Record remaining mismatches in `defect-log.md`.
-6. Do not finish without at least one rendered screenshot review. For 100% reproduction requests, keep iterating until the user accepts or the remaining gaps are explicitly listed.
-7. Do not judge fidelity from a clipped browser viewport. The screenshot must include the full draw.io page/canvas or a deliberate canvas-only crop.
-8. If the screenshot shows large structural errors, repair `visual-spec.md` and `layout-grid.md` first, then patch XML. Do not keep nudging objects without updating the plan.
-9. Do not overwrite screenshot review history. A generator may create `defect-log.md` only before review begins; after the first screenshot row exists, append new passes and corrections instead of replacing the file.
-10. Do not run artifact validation in parallel with generation, preview creation, screenshot capture, or scripts that write the same workdir. Validate only after those writes complete so the result reflects one coherent artifact state.
+6. **Run `scripts/validate_visual_quality.py` before the first preview.** Zero FAILs required. You are blind to geometry defects in XML — the checker is your eyes.
+7. Do not finish without at least 3 rendered screenshot review cycles (each with a canvas-only screenshot). First drafts are always flawed.
+8. Do not finish without a complete 9-zone defect inventory (≥ 30 defects), all P0/P1 fixed and verified, a red-team audit (≥ 30 findings), and a self-score card (TOTAL ≥ 40, no dimension ≤ 5).
+9. Do not judge fidelity from a full browser screenshot. The diagram must fill ≥ 80% of the screenshot image. A screenshot showing the diagrams.net toolbar, sidebar, or browser chrome is INVALID — you cannot read text or see spacing at that scale. Crop to the canvas rectangle or zoom the viewport.
+10. If the screenshot shows large structural errors, repair `visual-spec.md` and `layout-grid.md` first, then patch XML. Do not keep nudging objects without updating the plan.
+11. Do not overwrite screenshot review history. A generator may create `defect-log.md` only before review begins; after the first screenshot row exists, append new passes and corrections instead of replacing the file.
+12. Do not run artifact validation in parallel with generation, preview creation, screenshot capture, or scripts that write the same workdir. Validate only after those writes complete so the result reflects one coherent artifact state.
 
 ## Required Artifacts
 
@@ -199,14 +201,17 @@ The red-team audit is a separate pass whose goal is to find mistakes, not to con
 Before handoff, verify:
 
 - The `.drawio` file exists and is the primary artifact.
+- `validate_visual_quality.py` passed (zero FAILs) before the first preview HTML was generated.
 - `validate_drawio.py` passes.
 - `validate_replication_artifacts.py <workdir> --require-screenshot-review` passes.
 - Preview HTML was regenerated after the latest XML edit.
-- At least one screenshot was reviewed.
-- `defect-log.md` includes a screenshot evidence row with capture type and crop/viewport notes.
+- At least 3 screenshot→inventory→fix→verify cycles were completed with canvas-only screenshots.
+- `defect-log.md` includes all cycle reports, each with at least 30 concrete defects across 9 zones.
+- `defect-log.md` includes a screenshot evidence row with capture type ("canvas-only" if valid, "full-browser" = INVALID).
 - `defect-log.md` includes a requirement and semantic audit of the latest screenshot.
-- `defect-log.md` includes a red-team visual audit of the latest screenshot.
+- `defect-log.md` includes a red-team visual audit of the latest screenshot (≥ 30 findings across 9 zones).
 - `defect-log.md` lists remaining mismatches.
+- A self-score card exists with TOTAL ≥ 40 and no dimension ≤ 5, with concrete evidence for every deduction.
 - Validation was run after generation and preview writes completed, not concurrently with them.
 - No visible reference component was silently omitted.
 

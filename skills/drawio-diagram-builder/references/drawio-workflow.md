@@ -69,6 +69,7 @@ For prompt-only or freeform diagrams:
 3. Choose a visual grammar: pipeline, layered system, swimlane, state machine, hierarchy, feedback loop, comparison, or dashboard-like overview.
 4. Establish a style contract: font, palette, density, corner radius, stroke, icon family, and caption policy.
 5. Mark uncertain content or speculative relationships so the final handoff can disclose them.
+6. **If reference images are provided as style guides, run the full style extraction protocol.** Load `references/style-extraction.md`. Sample hex codes, measure font sizes, note corner radii and stroke widths. Write the extraction table BEFORE authoring XML. "Looking" at a reference without extracting concrete values is the #1 cause of diagrams that look nothing like the reference.
 
 For top-conference computer-science figures:
 
@@ -122,6 +123,29 @@ Use manual draw.io UI control when:
 
 Use XML editing plus browser preview for the most repeatable path.
 
+## 4.5 Pre-Flight Quality Check (MANDATORY)
+
+**Run before the first preview.** You are blind to visual quality from XML coordinates alone. A `<mxCell x="220" y="140" width="60" height="40" fontSize="8"/>` looks like data — but it renders as illegible micro-text in a cramped box. The pre-flight checker computes these defects from geometry:
+
+```powershell
+python <skill-dir>/scripts/validate_visual_quality.py <file>.drawio
+```
+
+Checks performed without rendering:
+- arrow–box collision (arrow segments intersecting non-source/non-target boxes)
+- text overflow risk (estimated text bounds vs container dimensions)
+- font–container proportionality (cavernous boxes vs cramped text)
+- element overlap (intersecting bounding rectangles)
+- spacing variance (inconsistent gaps between adjacent elements)
+- color palette coherence (too many distinct fill/stroke colors)
+- orphan labels (empty significant-size boxes)
+- font size anomalies (< 7pt illegible or > 48pt accidental)
+- edge density hotspots (arrow spaghetti regions)
+
+**Zero FAILs required.** Review every WARN. If the checker exits non-zero, fix the issues and re-run. Do not generate the preview HTML until pre-flight passes. Load `references/xml-preflight.md` for the full explanation.
+
+A skipped pre-flight is the #1 cause of a garbage first screenshot. If your first screenshot looks terrible, you almost certainly skipped this step.
+
 ## 5. Preview Path That Avoids Long URLs
 
 Do not pass large XML through a `#create=` URL or Windows `.url` shortcut. Use the bundled preview helpers. Resolve script paths relative to the skill directory; do not hard-code a user-specific home path.
@@ -159,24 +183,48 @@ When the user edits the diagram in this preview, the blue Save button triggers a
 
 This is the core mechanism. Without screenshots, the agent is guessing.
 
+**HARD GATES — these are non-negotiable:**
+
+1. **Style extraction before authoring** — if reference images provided, complete the extraction table in `references/style-extraction.md` before drawing anything.
+2. **Pre-flight before first preview** — `validate_visual_quality.py` with zero FAILs.
+3. **Minimum 3 cycles.** For any high-fidelity or user-critical diagram, complete at least 3 full screenshot→inventory→fix→verify cycles.
+4. **Complete defect inventory (all 9 zones) per cycle.** Minimum 30 concrete, named defects. A garbage first draft ALWAYS has 30+ visible problems. If you found fewer, you are not scanning systematically — go zone by zone, pixel by pixel.
+5. **Fix ALL P0/P1 defects per cycle.** If your inventory found 40 P0/P1 items, you fix all 40. Not "the most important ones." ALL of them.
+6. **Fix verification after each fix pass.** Compare old vs new screenshot at each defect location. Mark FIXED/NOT FIXED/PARTIAL/REGRESSION.
+7. **Red-team audit before handoff.** Re-scan all 9 zones as a hostile reviewer. Minimum 30 findings. If the self-supervision found 40 defects and you as red-team only find 5 more, you are colluding with the author — a hostile reviewer would find at least 30 more.
+8. **Self-score card before handoff.** Score 5 dimensions (1–10). Total < 30 or any dimension ≤ 4 → BLOCKED. Total < 40 → borderline, requires justification.
+
 Use one workdir state at a time. Do not run XML generation, preview generation, screenshot capture, and artifact validation concurrently against the same directory. The safe order is:
 
-1. write or patch `.drawio`
-2. regenerate preview HTML
-3. refresh browser and capture screenshot
-4. inspect screenshot and append `defect-log.md`
-5. run validators
+1. extract style from references (if provided) — fill the extraction table completely
+2. run pre-flight (`validate_visual_quality.py`) — zero FAILs
+3. write or patch `.drawio`
+4. regenerate preview HTML
+5. refresh browser and capture screenshot
+6. create COMPLETE 9-zone defect inventory — minimum 30 concrete defects (a garbage first draft always has 30+ visible problems; if you found fewer, you are not scanning systematically)
+7. fix ALL P0 and P1 defects (not just 3-5)
+8. regenerate preview HTML and take new screenshot
+9. verify each fix: mark FIXED/NOT FIXED/PARTIAL/REGRESSION by comparing old vs new screenshot at each defect location
+10. append `defect-log.md` with the inventory, all fixes, and verification results
+9. repeat from step 3 until ≥ 3 cycles, red-team done, self-score ≥ 40
+10. run validators
 
 ### How to take the screenshot
+
+**CRITICAL: You MUST capture the draw.io canvas/page area ONLY, not the full browser window.** A full browser screenshot includes the diagrams.net sidebar, toolbar, and browser chrome — this shrinks the diagram so much that text becomes illegible, icons blur into dots, and spacing defects become invisible. Such a screenshot is WORTHLESS for quality inspection.
+
+If the diagram content occupies less than 80% of the screenshot image, the screenshot is invalid. Retake it.
 
 1. Start the preview server (see Section 5) — `serve_drawio_preview.py` or `python -m http.server`.
 2. Navigate the browser to `http://127.0.0.1:8765/drawio-preview.html?rev=N` (increment N to bust cache).
 3. **Wait 3-5 seconds** for the `embed.diagrams.net` iframe to fully render. If you snapshot too early, you'll see a blank or loading page.
-4. Take a full-page or viewport screenshot. Use whatever browser tooling is available:
-   - Playwright/Puppeteer MCP: `page.screenshot()`
-   - Browser MCP: `browser_take_screenshot`
-   - Any browser automation that can navigate to a URL and capture pixels
-5. Save the screenshot and inspect it.
+4. **First, take a full-page screenshot** to locate the canvas/page rectangle — the white/light area where your diagram renders. Find its (x, y, width, height) in pixels.
+5. **Then, take a canvas-only cropped screenshot:**
+   - Playwright/Puppeteer: `await page.screenshot({ path: "canvas-N.png", clip: { x, y, width, height } })`
+   - Browser MCP with evaluate: get canvas bounds, then screenshot with clip
+   - If cropping is unavailable: resize viewport to 1920×1400+, zoom out (Ctrl+-) until the full canvas fills the viewport, and take a viewport-only screenshot
+6. **Verify the screenshot is usable:** Open it. Can you read every text label? Can you see icon details? Can you visually measure spacing? If any answer is "no", the screenshot is invalid — go back to step 4.
+7. Save the screenshot at a descriptive path (e.g., `diagram-pass-3.png`).
 
 ### Canvas-only or deliberate crop capture
 
@@ -199,23 +247,23 @@ The numbers must come from the current browser screenshot, not from memory. If t
 
 ### Iteration loop
 
-Each iteration should be narrow:
+Each cycle is: **screenshot → inventory → fix ALL P0/P1 → verify → log**.
 
 1. Refresh the local preview URL (with cache bust).
 2. Screenshot.
-3. Compare against the reference/spec.
-4. Run self-supervision against the whole diagram, not just the edited area:
-   - requirement audit: does the diagram satisfy the prompt/brief?
-   - semantic audit: do arrows, loops, and grouped routes mean the right thing?
-   - visual hygiene audit: are text, boxes, icons, and arrows readable and non-overlapping?
-   - style audit: does it match the requested style or reference family?
-   - regression audit: did this pass break something that previously worked?
-5. Pick 3 to 5 visible issues.
-6. Patch only those objects in the XML.
-7. Regenerate the preview HTML (the server reads from the HTML file, not live XML - you MUST re-run `make_drawio_preview.py` after XML changes).
-8. Append the pass to `defect-log.md` or a lighter screenshot review table; after the first screenshot row exists, do not overwrite earlier review rows.
-9. Run validators only after generation and preview writes complete.
-10. Go to step 1.
+3. **Create a COMPLETE defect inventory across all 9 zones BEFORE fixing anything.** Scan: text readability, arrow hygiene, box integrity, spacing consistency, color/palette, typography, layout/composition, icons, style coherence. Find EVERY visible problem. Organize by P0/P1/P2 severity. Do not stop at 5 defects — find them all.
+4. Run all 5 dimensions of self-supervision to cross-check your inventory:
+   - requirement audit
+   - semantic audit
+   - visual hygiene audit
+   - style audit
+   - regression audit
+5. **Fix ALL P0 and P1 defects** (not just 3-5). If your inventory found 15 P0/P1 items, fix all 15.
+6. Regenerate the preview HTML.
+7. Take a new screenshot.
+8. **Verify each fix:** compare old vs new screenshot at each defect location. Mark FIXED/NOT FIXED/PARTIAL/REGRESSION. A defect marked NOT FIXED means you must fix it again — the intention doesn't count.
+9. Append the pass and verification to `defect-log.md`; after the first screenshot row exists, do not overwrite earlier review rows.
+10. Go to step 1 (continue until ≥ 3 cycles, red-team done, self-score ≥ 40).
 
 Useful issue categories:
 
@@ -235,13 +283,20 @@ Useful issue categories:
 
 Blocker categories that prevent handoff:
 
+- style not extracted from reference images (if provided)
+- pre-flight not passed (zero FAILs required)
 - wrong connector direction, fan-in/fan-out, or feedback meaning
 - missing required entity or relationship
-- arrows crossing or hiding text
+- arrows crossing or hiding text, boxes, or icons
 - text hidden by boxes, clipped by boundaries, or escaping its intended region
 - obvious icon mismatch or missing icon for a required concept
 - visual result conflicts with an explicit style constraint
 - screenshot evidence is clipped or too partial to verify the full diagram
+- fewer than 3 screenshot→inventory→fix→verify cycles completed
+- complete defect inventory not created for the latest cycle
+- any P0 or P1 defect marked NOT FIXED in the latest verification
+- red-team audit not performed or found < 20 issues
+- self-score below threshold (TOTAL < 40 or any dimension ≤ 5)
 
 Avoid broad rewrites after a good base exists. Small visual regressions are easier to isolate when each pass changes only a few cells.
 
@@ -252,9 +307,12 @@ Provide:
 - final `.drawio` path
 - latest screenshot path
 - local preview URL if the server is still running
-- validation summary
+- validation summary (`validate_drawio.py` + `validate_visual_quality.py`)
+- self-score card with evidence for each deduction
+- defect inventory summary (total P0/P1 fixed, remaining P2)
+- fix verification log from the latest cycle
 - remaining known visual gaps if any
 
 If exact icons/logos were approximated, state that clearly and identify which assets should be supplied for the next fidelity pass.
 
-Do not describe a diagram as complete if the latest screenshot still contains a visible blocker. Either iterate again or explicitly list the blocker as unresolved.
+Do not describe a diagram as complete if the latest screenshot still contains a visible P0/P1 blocker, if fix verification shows unresolved defects, or if any hard gate is unmet. Either iterate again or explicitly list the blocker as unresolved with a reason.
