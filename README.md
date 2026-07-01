@@ -91,7 +91,11 @@ This is the intended workflow for high-fidelity scientific diagramming: convert 
 │   │   ├── primitive-icons.md
 │   │   ├── reference-replication-protocol.md
 │   │   ├── self-supervision-and-intake.md
+│   │   ├── topconf-paper-style.md
 │   │   └── xml-authoring.md
+│   ├── assets/
+│   │   ├── icons/
+│   │   └── reference-images/
 │   └── scripts/
 │       ├── check_skill_update.py
 │       ├── make_drawio_preview.py
@@ -174,6 +178,16 @@ skills/drawio-diagram-builder/assets/icons/tabler/outline/
 
 Read `skills/drawio-diagram-builder/assets/icons/ICON-MANIFEST.md` for the full inventory and license notes. These icons are useful for generic document, media, storage, model, routing, status, metric, and tool symbols. If exact reproduction needs a branded or paper-specific icon, supply the exact asset or record the approximation in `asset-ledger.md`.
 
+## Bundled Top-Conference Style References
+
+The skill includes several computer-science paper figure references under:
+
+```text
+skills/drawio-diagram-builder/assets/reference-images/
+```
+
+Use them only as style and layout fallback when the user asks for a polished top-conference-style paper figure but does not provide enough visual guidance. The agent should not embed these raster references into the final `.drawio`, and should not invent scientific content to fill the style.
+
 ### Check whether an installed skill is current
 
 ```powershell
@@ -189,6 +203,12 @@ python .\skills\drawio-diagram-builder\scripts\validate_drawio.py .\examples\min
 ```
 
 Flags embedded raster images by default. Use `--allow-raster` only when image assets are intentional.
+
+The validator also checks duplicate cell ids, missing edge/parent references, missing or invalid geometry, external images, oversized base64 payloads, off-page vertices, empty labels, and placeholder-like text. Use CI-friendly output and warning-as-error mode when needed:
+
+```powershell
+python .\skills\drawio-diagram-builder\scripts\validate_drawio.py --strict --json .\examples\minimal.drawio
+```
 
 ### Validate reference-replication artifacts
 
@@ -227,7 +247,7 @@ python -m http.server 8765 --bind 127.0.0.1
 
 Then open `http://127.0.0.1:8765/drawio-preview.html?rev=1`.
 
-The preview uses an iframe to `https://embed.diagrams.net/` and injects XML via `postMessage` — the browser URL stays short, avoiding the Windows long-URL crash.
+The preview uses an iframe to `https://embed.diagrams.net/` and injects XML via origin-checked `postMessage` — the browser URL stays short, avoiding the Windows long-URL crash.
 
 ## Windows Notes
 
@@ -241,7 +261,7 @@ The preview uses an iframe to `https://embed.diagrams.net/` and injects XML via 
 python .\tests\smoke_test.py
 ```
 
-Verifies XML parsing, preview HTML generation, and that the output contains the diagrams.net iframe.
+Verifies XML parsing, stricter validation failures, preview HTML generation, origin-checked diagrams.net messaging, bundled icons, and bundled reference images.
 
 ## License
 

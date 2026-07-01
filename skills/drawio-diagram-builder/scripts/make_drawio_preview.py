@@ -28,6 +28,7 @@ def build_html(xml: str, title: str) -> str:
 <script>
 const xml = {xml_json};
 const diagramTitle = {title_json};
+const DRAWIO_ORIGIN = 'https://embed.diagrams.net';
 const iframe = document.getElementById('drawio');
 let loaded = false;
 function downloadXml(savedXml) {{
@@ -49,12 +50,13 @@ function sendLoad() {{
     modified: 0,
     title: diagramTitle,
     xml
-  }}), '*');
+  }}), DRAWIO_ORIGIN);
 }}
 window.__drawioPreview = {{
-  requestSave: () => iframe.contentWindow.postMessage(JSON.stringify({{ action: 'save' }}), '*')
+  requestSave: () => iframe.contentWindow.postMessage(JSON.stringify({{ action: 'save' }}), DRAWIO_ORIGIN)
 }};
 window.addEventListener('message', (evt) => {{
+  if (evt.source !== iframe.contentWindow || evt.origin !== DRAWIO_ORIGIN) return;
   let msg = evt.data;
   try {{ if (typeof msg === 'string') msg = JSON.parse(msg); }} catch (e) {{ return; }}
   if (!msg) return;
@@ -64,7 +66,7 @@ window.addEventListener('message', (evt) => {{
       action: 'status',
       modified: false,
       message: 'Downloaded .drawio file'
-    }}), '*');
+    }}), DRAWIO_ORIGIN);
     return;
   }}
   if (!loaded && (msg.event === 'init' || msg.event === 'configure')) {{

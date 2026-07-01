@@ -36,7 +36,7 @@ Use this priority order:
 4. **draw.io MCP / `@drawio/mcp`** — only for small diagrams or quick opening. On Windows, large encoded URLs fail with `The data area passed to a system call is too small`; do not rely on `.url` shortcuts for large XML.
 5. **draw.io desktop/CLI export** — if installed. Treat as optional; always have the local iframe preview fallback.
 
-Load `references/drawio-workflow.md` for the detailed end-to-end process. Load `references/self-supervision-and-intake.md` for any non-trivial diagram, mixed prompt-plus-image input, project-context diagram, or iterative visual repair. Load `references/xml-authoring.md` when writing or repairing XML shapes, styles, edges, and text layout. Load `references/primitive-icons.md` when a reference figure contains small modality, memory, warning, tool, clock, document, or other paper-style icons that should remain editable. Load `assets/icons/ICON-MANIFEST.md` when generic SVG icon assets would improve fidelity.
+Load `references/drawio-workflow.md` for the detailed end-to-end process. Load `references/self-supervision-and-intake.md` for any non-trivial diagram, mixed prompt-plus-image input, project-context diagram, or iterative visual repair. Load `references/topconf-paper-style.md` when the user asks for a computer-science paper, top-conference, camera-ready, method, ML pipeline, multimodal architecture, benchmark, or polished research figure, especially when the user gives weak or missing style references. Load `references/xml-authoring.md` when writing or repairing XML shapes, styles, edges, and text layout. Load `references/primitive-icons.md` when a reference figure contains small modality, memory, warning, tool, clock, document, or other paper-style icons that should remain editable. Load `assets/icons/ICON-MANIFEST.md` when generic SVG icon assets would improve fidelity.
 
 For any reference-image replication request, load `references/reference-replication-protocol.md` before creating XML. This is mandatory. Treat high-fidelity replication as an evidence pipeline: observe the reference, specify geometry, author XML, render, compare, patch, and repeat. Do not start drawing from a reference image until the protocol's required intermediate artifacts exist.
 
@@ -50,6 +50,7 @@ Resolve all references relative to the skill directory.
    - Read the user's prompt, reference images, paper sections, codebase files, or domain notes.
    - Identify the task type: research figure creation, paper-method diagramming, visual replication, architecture diagramming, repository diagramming, or iterative polish.
    - Classify every input by role: content source, structure source, style source, layout source, or asset source. A style reference does not automatically define content or connector semantics.
+   - For top-conference paper figures with weak or missing style input, use `references/topconf-paper-style.md` and the bundled images under `assets/reference-images/` as style/layout fallback only. Do not invent scientific content to fill the layout.
    - If exact assets are needed, locate them locally or ask for them. Do not silently replace a required logo/icon with an unrelated one.
 
 3. **Build the diagram brief and visual specification**
@@ -95,8 +96,9 @@ Resolve all references relative to the skill directory.
 
 7. **Validate before handoff**
    - Run `scripts/validate_drawio.py <file>.drawio`.
+   - Use `scripts/validate_drawio.py --strict --json <file>.drawio` when a CI-friendly final gate is useful, or when warnings such as off-page vertices or placeholder-like labels should block handoff.
    - For reference-image replication, also run `scripts/validate_replication_artifacts.py <workdir> --require-screenshot-review` after the latest screenshot pass. Run validation after generation/preview writes finish; do not run validators in parallel with scripts that write the same artifact directory.
-   - Confirm: XML parses, page count is expected, no unwanted embedded raster images, captions included/removed as requested, latest screenshot reviewed.
+   - Confirm: XML parses, page count is expected, ids and references are valid, required geometry exists, no unwanted embedded raster or external images are present, captions included/removed as requested, latest screenshot reviewed.
    - Provide the `.drawio` path and the latest screenshot path. Leave the local preview server running if the user wants to continue iterating.
 
 ## Editing Rules
@@ -131,10 +133,12 @@ Resolve all references relative to the skill directory.
 - `scripts/check_skill_update.py`: compare the installed skill version with the canonical GitHub version.
 - `scripts/make_drawio_preview.py`: build a local short-URL preview HTML that loads `.drawio` XML into diagrams.net via `postMessage`.
 - `scripts/serve_drawio_preview.py`: generate the preview HTML and serve it on `127.0.0.1` with an optional browser launch.
-- `scripts/validate_drawio.py`: parse and sanity-check `.drawio` files before handoff.
+- `scripts/validate_drawio.py`: parse, structurally validate, count labels/assets, and sanity-check `.drawio` files before handoff. Supports `--strict` and `--json`.
 - `assets/icons/ICON-MANIFEST.md`: local MIT-licensed SVG icon inventory and usage rules.
+- `assets/reference-images/REFERENCE-IMAGES.md`: bundled top-conference-style figure references for style fallback.
 - `references/drawio-workflow.md`: full professional workflow for prompt/paper/code/reference-image to editable draw.io.
 - `references/self-supervision-and-intake.md`: mixed-input intake, diagram brief, semantic connector audit, and screenshot self-supervision gate.
+- `references/topconf-paper-style.md`: top-conference computer-science figure style, fallback reference selection, and paper-quality bar.
 - `references/primitive-icons.md`: reusable editable primitive recipes for common research-figure icons.
 - `references/reference-replication-protocol.md`: low-freedom protocol for high-fidelity reference-image replication.
 - `references/xml-authoring.md`: XML, layout, style, edge, text, icon, and iteration patterns.

@@ -91,7 +91,11 @@ LLM 能写 draw.io XML，但一次成型的结果通常有问题：
 │   │   ├── primitive-icons.md
 │   │   ├── reference-replication-protocol.md
 │   │   ├── self-supervision-and-intake.md
+│   │   ├── topconf-paper-style.md
 │   │   └── xml-authoring.md
+│   ├── assets/
+│   │   ├── icons/
+│   │   └── reference-images/
 │   └── scripts/
 │       ├── check_skill_update.py
 │       ├── make_drawio_preview.py
@@ -174,6 +178,16 @@ skills/drawio-diagram-builder/assets/icons/tabler/outline/
 
 完整清单和许可证说明见 `skills/drawio-diagram-builder/assets/icons/ICON-MANIFEST.md`。这些图标适合通用的文档、媒体、存储、模型、路由、状态、指标、工具类符号。如果高保真复刻需要品牌图标或论文专属符号，应提供精确资产，或在 `asset-ledger.md` 中记录为近似项。
 
+## 内置顶会风格参考图
+
+skill 在以下目录内置了几张计算机论文配图参考：
+
+```text
+skills/drawio-diagram-builder/assets/reference-images/
+```
+
+仅当用户要求高质量顶会论文风格配图、但没有提供足够视觉参考时，将它们作为风格与布局兜底。Agent 不应把这些栅格参考图嵌入最终 `.drawio`，也不应为了套用风格而发明科学内容。
+
 ### 检查已安装 skill 是否为最新版
 
 ```powershell
@@ -189,6 +203,12 @@ python .\skills\drawio-diagram-builder\scripts\validate_drawio.py .\examples\min
 ```
 
 默认标记内嵌位图。仅在有意使用图片素材时加 `--allow-raster`。
+
+验证器还会检查重复 cell id、缺失 edge/parent 引用、缺失或无效 geometry、外部图片、过大的 base64 载荷、越出页面的图元、空标签和疑似占位文本。需要 CI 友好输出和 warning-as-error 时使用：
+
+```powershell
+python .\skills\drawio-diagram-builder\scripts\validate_drawio.py --strict --json .\examples\minimal.drawio
+```
 
 ### 校验参考图复刻过程文档
 
@@ -227,7 +247,7 @@ python -m http.server 8765 --bind 127.0.0.1
 
 然后打开 `http://127.0.0.1:8765/drawio-preview.html?rev=1`。
 
-预览页面通过 iframe 加载 `https://embed.diagrams.net/`，利用 `postMessage` 注入 XML，浏览器地址栏保持短 URL，避免 Windows 长 URL 崩溃。
+预览页面通过 iframe 加载 `https://embed.diagrams.net/`，利用带 origin 校验的 `postMessage` 注入 XML，浏览器地址栏保持短 URL，避免 Windows 长 URL 崩溃。
 
 ## Windows 注意事项
 
@@ -241,7 +261,7 @@ python -m http.server 8765 --bind 127.0.0.1
 python .\tests\smoke_test.py
 ```
 
-验证 XML 解析、预览 HTML 生成，确认输出包含 diagrams.net iframe。
+验证 XML 解析、更严格的失败用例、预览 HTML 生成、diagrams.net origin 校验消息、内置图标和内置参考图。
 
 ## License
 

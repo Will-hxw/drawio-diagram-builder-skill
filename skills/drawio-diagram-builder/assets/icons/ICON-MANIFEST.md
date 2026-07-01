@@ -39,6 +39,7 @@ Ask for an exact asset when:
 
 - `file-text.svg`
 - `file-description.svg`
+- `file-analytics.svg`
 - `notes.svg`
 - `list-details.svg`
 - `clipboard-text.svg`
@@ -56,11 +57,17 @@ Ask for an exact asset when:
 ### Storage And Infrastructure
 
 - `database.svg`
+- `database-search.svg`
+- `database-cog.svg`
 - `server.svg`
+- `server-cog.svg`
 - `cloud.svg`
+- `cloud-cog.svg`
 - `folder.svg`
 - `folders.svg`
 - `archive.svg`
+- `package.svg`
+- `schema.svg`
 - `stack.svg`
 - `layers-intersect.svg`
 
@@ -69,21 +76,32 @@ Ask for an exact asset when:
 - `brain.svg`
 - `robot.svg`
 - `cpu.svg`
+- `cpu-2.svg`
 - `binary-tree.svg`
+- `binary.svg`
+- `graph.svg`
 - `network.svg`
+- `network-off.svg`
 - `hierarchy.svg`
 - `sitemap.svg`
 - `route.svg`
+- `route-square.svg`
 - `git-branch.svg`
+- `git-commit.svg`
+- `git-merge.svg`
 
 ### Arrows, Loops, And Iteration
 
 - `arrows-right-left.svg`
+- `arrows-split.svg`
+- `arrows-join.svg`
 - `arrow-right.svg`
 - `arrow-left.svg`
 - `arrow-loop-right.svg`
 - `refresh.svg`
 - `repeat.svg`
+- `transfer.svg`
+- `timeline.svg`
 
 ### Metrics, Rewards, And Status
 
@@ -99,6 +117,37 @@ Ask for an exact asset when:
 - `circle-x.svg`
 - `clock.svg`
 - `hourglass.svg`
+
+### Code, Math, And Scientific Notation
+
+- `code.svg`
+- `terminal-2.svg`
+- `braces.svg`
+- `function.svg`
+- `math-function.svg`
+- `sum.svg`
+- `vector.svg`
+- `atom.svg`
+- `flask.svg`
+- `microscope.svg`
+- `hexagon.svg`
+
+### Security, Privacy, And Visibility
+
+- `key.svg`
+- `lock.svg`
+- `shield-check.svg`
+- `eye.svg`
+- `eye-off.svg`
+
+### Devices, Context, And Product Workflow
+
+- `device-desktop.svg`
+- `device-mobile.svg`
+- `world.svg`
+- `bulb.svg`
+- `wand.svg`
+- `rocket.svg`
 
 ### Tools And Controls
 
