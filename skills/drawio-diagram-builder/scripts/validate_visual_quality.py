@@ -648,6 +648,78 @@ def check_font_size_anomalies(vertices: List[Vertex]) -> List[Finding]:
     return findings
 
 
+def check_decoration_blocks(vertices: List[Vertex]) -> List[Finding]:
+    """Detect unlabeled colored shapes that carry no semantic load.
+
+    The #1 amateur failure: an agent copies a reference figure's token bars or
+    matrix grids as decorative colored squares, without any content behind them.
+    A colored shape with no text label, no children, and small-to-medium size is
+    almost certainly meaningless decoration. Flag clusters of such shapes.
+    """
+    findings = []
+
+    # Candidate decoration blocks: filled, non-container, non-image, non-text,
+    # no value label, small enough to be a "cell" (not a major region).
+    candidates = []
+    for v in vertices:
+        if v.is_container or v.is_image or v.is_text:
+            continue
+        if v.value.strip():  # has a label → probably meaningful
+            continue
+        if v.fill_color is None or v.fill_color == "none":
+            continue
+        # Small-to-medium size: typical token-bar cell or matrix cell
+        # (not a giant background region, not a tiny icon)
+        if 15 <= v.rect.w <= 120 and 15 <= v.rect.h <= 120:
+            candidates.append(v)
+
+    # Group candidates that are adjacent (same row or column, within 1.5× cell size)
+    # A cluster of 3+ adjacent unlabeled colored cells = likely decorative token/matrix strip
+    visited = set()
+    for seed in candidates:
+        if seed.id in visited:
+            continue
+        cluster = [seed]
+        visited.add(seed.id)
+        # Find same-row neighbors
+        for other in candidates:
+            if other.id in visited:
+                continue
+            same_row = abs(other.rect.y - seed.rect.y) < 8
+            same_col = abs(other.rect.x - seed.rect.x) < 8
+            adjacent_row = same_row and abs(other.rect.x - seed.rect.x2) < seed.rect.w * 1.5
+            adjacent_col = same_col and abs(other.rect.y - seed.rect.y2) < seed.rect.h * 1.5
+            if adjacent_row or adjacent_col:
+                cluster.append(other)
+                visited.add(other.id)
+
+        if len(cluster) >= 3:
+            ids = [c.id for c in cluster]
+            colors = sorted({c.fill_color for c in cluster if c.fill_color})
+            findings.append(Finding(
+                severity="WARN",
+                rule="decoration-block-cluster",
+                element_id=seed.id,
+                message=f"Cluster of {len(cluster)} adjacent unlabeled colored shapes "
+                        f"(ids: {ids[:5]}{'...' if len(ids)>5 else ''}, "
+                        f"colors: {colors}). These look like decorative token/matrix "
+                        f"cells copied from a reference without semantic content. "
+                        f"Either add a text label to each cell stating what it represents, "
+                        f"or delete the cluster and use a single labeled box. "
+                        f"Paper figures use colored cells to represent REAL data "
+                        f"(tokens, matrix entries) — empty colored cells are noise.",
+                detail={
+                    "cluster_size": len(cluster),
+                    "element_ids": ids,
+                    "fill_colors": colors,
+                    "rects": [f"{c.rect.x:.0f},{c.rect.y:.0f} {c.rect.w:.0f}×{c.rect.h:.0f}"
+                              for c in cluster[:6]],
+                },
+            ))
+
+    return findings
+
+
 def check_edge_density(edges: List[Edge], page_w: float, page_h: float) -> List[Finding]:
     findings = []
     cell_size = 200
@@ -688,6 +760,7 @@ ALL_RULES = [
     ("element-overlap", check_element_overlap),
     ("spacing-variance", check_spacing_variance),
     ("color-coherence", check_color_coherence),
+    ("decoration-blocks", check_decoration_blocks),
     ("orphan-labels", check_orphan_labels),
     ("font-size-anomalies", check_font_size_anomalies),
     ("edge-density", check_edge_density),

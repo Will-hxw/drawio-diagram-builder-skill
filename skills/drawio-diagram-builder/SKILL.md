@@ -74,7 +74,7 @@ Resolve all references relative to the skill directory.
    - Split dense text into multiple cells when line-level alignment matters.
    - Build important icons and arrows with editable draw.io primitives when possible. Use `references/primitive-icons.md` for common research-figure icon recipes before inventing one-off symbols. Use bundled SVG icons from `assets/icons/` when fidelity matters more than primitive editability, and record them in `asset-ledger.md`.
    - Keep colors, strokes, fonts, and rounded corners consistent with the reference or requested style.
-   - **Before rendering, run the pre-flight checker.** You cannot perceive visual quality from XML alone — arrow-box collisions, text overflow, font-box mismatches, spacing chaos, and palette scatter are invisible to you but computable from geometry:
+   - **Before rendering, run the pre-flight checker.** You cannot perceive visual quality from XML alone — arrow-box collisions, text overflow, font-box mismatches, spacing chaos, palette scatter, and **meaningless decorative color blocks copied from references** are all invisible to you but computable from geometry:
      ```powershell
      python <skill-dir>/scripts/validate_visual_quality.py <file>.drawio
      ```

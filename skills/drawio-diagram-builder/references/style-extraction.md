@@ -94,6 +94,58 @@ When authoring XML:
 4. Use the same gap values between all same-type elements. Consistency is the cheapest way to look professional.
 5. Mirror the arrow grammar: same type, same color, same routing style.
 
+## Semantic Justification (MANDATORY — The Anti-Decoration Rule)
+
+**The #1 failure mode this protocol prevents: you copy the reference's surface (colored squares, matrix grids, token bars) without copying its meaning.** A reference figure's token bar represents real tokens. When you copy the token-bar shape into a diagram that has no token sequence, you produce meaningless colored noise.
+
+For EVERY visual element you plan to draw, fill this justification table **before** authoring its XML:
+
+```markdown
+## Semantic Justification
+
+| element | visual form | what it represents in the user's method | each unit corresponds to | justified? |
+|---------|-------------|------------------------------------------|--------------------------|-----------|
+| e.g. top-row 4 colored squares | token bar | the 4 modalities (text/image/audio/video) | one square = one modality | YES — real semantic categories |
+| e.g. right-side gradient matrix | matrix grid | ??? | ??? | NO — delete or replace with labeled box |
+| e.g. bottom colored strip | token bar | ??? | ??? | NO — delete |
+```
+
+**Rules:**
+- If "what it represents" is empty or a question mark, the element is decoration. **Delete it or replace it with a labeled box that states the content in text.**
+- A labeled box ("`Token Sequence (T=128)`") is ALWAYS preferable to an unlabeled colored shape. Always.
+- Colored shapes are justified ONLY when each color/cell maps to a real, nameable category in the user's content.
+- "It looks more like a paper figure" is NOT a justification. Paper figures look good because every element means something, not because they have colored shapes.
+
+### Concrete Example Of The Failure To Prevent
+
+**Bad (what the agent did):** Drew a 4-square blue/yellow/red/green block in the top-left of a Cog architecture diagram. The squares represent nothing — they're there because the reference image had small colored squares.
+
+**Good:** The reference's small squares represented token positions. The Cog diagram has no token sequence at that position. So: delete the squares. Replace with a labeled box: "`Multimodal Input`" containing text labels for each input type.
+
+### Cross-Check Against The Reference
+
+After extraction, ask: "Did the reference use this visual form because it had the corresponding content, or because the form itself is good?" The answer is always the former. Token bars exist because there are tokens. Matrix grids exist because there are matrices. The form follows the content. If your content doesn't have the thing, don't use the form.
+
+## How To Extract The RIGHT Things
+
+When you look at a reference image, your instinct will be to copy the visible shapes. Resist this. Extract instead:
+
+1. **Composition** — how many regions? how are they arranged? where is the main flow? (This is the essence. Copy freely.)
+2. **Density** — how many elements per region? how full is each region? (Copy the density level.)
+3. **Hierarchy** — what is the heading/subheading/body/caption structure? (Copy the hierarchy, not the words.)
+4. **Spacing rhythm** — what are the gap sizes between regions, between elements? (Copy the numbers.)
+5. **Palette** — what colors, used for what semantic categories? (Copy the palette and the category-mapping, not "color #3 goes top-right.")
+6. **Arrow grammar** — how are data/control/feedback distinguished? (Copy the visual distinction.)
+7. **Typography** — font sizes per hierarchy level? (Copy the sizes per level.)
+
+Do NOT extract:
+- Specific decorative shapes and reproduce them without the underlying content
+- A colorful block because "the reference had a colorful block"
+- A matrix grid because "the reference had a grid"
+- Anything whose meaning in the reference you cannot explain
+
+The reference is good because of points 1-7, not because of its decorative shapes. Learn 1-7. Leave the decorative shapes unless your content matches their semantics.
+
 ## When Style Extraction Fails
 
 If you extract styles and the diagram still looks wrong, check:

@@ -97,6 +97,14 @@ Grid the canvas into 200×200px cells. Count edges passing through each cell.
 
 This catches: regions where so many arrows converge that the reader cannot trace any of them.
 
+### 10. Decoration Block Clusters (WARN)
+
+Detects clusters of 3+ adjacent unlabeled colored shapes (15–120px each). These are almost certainly decorative token-bar / matrix-grid cells copied from a reference figure without any semantic content behind them.
+
+This catches the #1 amateur failure: an agent sees small colored squares in a top-conference reference and reproduces them in its own diagram — but the reference's squares represented real tokens/matrices, while the agent's squares represent nothing. The result is meaningless visual noise.
+
+Fix: either add a text label to each cell stating what it represents ("text", "image", "audio", "video" for a 4-modality token bar), or delete the cluster entirely and replace with a single labeled box. See `topconf-paper-style.md` "The First Principle" and `style-extraction.md` "Semantic Justification."
+
 ## What The Pre-Flight CANNOT Catch (Still Needs Screenshot)
 
 - **Aesthetic judgment**: a color combination that is "ugly" but within palette limits
