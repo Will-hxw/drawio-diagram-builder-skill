@@ -127,19 +127,19 @@ Z2-ARR-07 | `edge_feedback` | Arrow from `loss` to `encoder` passes through the 
 
 **Minimum per zone:**
 - P0 (blocker) — find every single one. An arrow passing through a box is P0. If you miss even one, you failed the audit.
-- P1 (visible defect) — find at least 5 per zone. Text a little too small? Spacing uneven? Color doesn't match style contract? These are P1.
-- P2 (polish) — find at least 3 per zone. Slightly off-center alignment? Box 2px wider than siblings? Find them.
+- P1 (visible defect) — find at least 2 per zone. Text a little too small? Spacing uneven? Color doesn't match style contract? These are P1.
+- P2 (polish) — find at least 2 per zone. Slightly off-center alignment? Box 2px wider than siblings? Find them.
 
-**Total minimum across all 9 zones: 30+ concrete defects.** If you have fewer, you skipped zones.
+**Total minimum: graduated by cycle — the floor drops as quality improves:**
 
-**If a zone produces fewer than the minimum, you are not looking hard enough.** Re-examine that zone at 2x zoom mentally. Every diagram has spacing inconsistencies, alignment drift, and visual rhythm problems.
+| Cycle | Minimum defects | Rationale |
+|-------|----------------|-----------|
+| Cycle 1 (first draft) | **≥30** | A garbage first draft ALWAYS has 30+ visible problems. Find them all. |
+| Cycle 2 | **≥15** | After fixing 30+ defects from cycle 1, 10-15 real defects remain. Do not invent fake ones to hit 30. |
+| Cycle 3 | **≥8**, or **≥5 if P0=0 and self-score≥40** | A stable diagram has few real defects. If you cannot find 8, the diagram may be done — switch to verification-mode red-team. |
+| Red-team (always after cycle 3+) | **≥15** | The red-team is looking for RESIDUAL problems on a diagram that already survived 3 fix cycles. 15 real findings (not 30 fake ones) proves hostile auditing. If the self-score card shows ≥45/50, red-team minimum is **≥10** (verification audit, not full adversarial pass). |
 
-**HARD MINIMUM: 30+ concrete defects across all zones.** A garbage first draft of a complex diagram ALWAYS has at least 30 visible problems. Text overflow. Arrow-box collisions. Spacing chaos. Font inconsistency. Color vomit. Missing hierarchy. Alignment drift. Boxes touching. Text hidden behind arrows. Icons overlapping. Unreadable small text. Cavernous empty boxes. If your inventory has fewer than 30 items, you are either:
-- Not scanning every zone systematically
-- Dismissing clear problems as "acceptable"
-- Stopping early because listing 30+ defects is tedious
-
-Listing 30+ defects is the work. Do the work.
+**The graduated minimum prevents a known failure mode:** after cycle 2, a clean diagram has only 5-10 real defects left. Forcing 30 forces the agent to fabricate trivial fake defects ("box A is 1px wider than box B") which pollutes the defect log and wastes time. Real improvements stop; compliance theater begins. The graduated minimum keeps the audit honest.
 
 Organize the defect inventory as:
 
@@ -159,7 +159,27 @@ Organize the defect inventory as:
 |----|------|---------|-------------|----------|
 ```
 
-### 4.2 Fix All Defects In Priority Order
+### 4.2 P0/P1/P2 Grading (AUTO-GRADED from pre-flight, not self-assigned)
+
+**Defect severity is NOT self-assigned.** The agent cannot downgrade a real P0 to P2 by writing "minor." Severity is derived from the pre-flight checker output + the screenshot audit:
+
+| Source | Grading |
+|--------|---------|
+| Pre-flight FAIL | **P0** — must fix this cycle, cannot be downgraded |
+| Pre-flight WARN | **P1** — must fix unless explicitly justified as acceptable |
+| Screenshot-only finding | Agent assigns P0/P1/P2 with concrete evidence; pre-flight output (if re-run) constrains the grade — an element flagged as FAIL by the checker is always P0 |
+
+**Document this in the defect inventory:**
+```markdown
+| defect id | zone | element | description | source | severity |
+|-----------|------|---------|-------------|--------|----------|
+| Z2-ARR-07 | Arrow hygiene | edge_e1 | Arrow passes through text box `title_label` | pre-flight FAIL: arrow-box-collision | P0 |
+| Z3-BOX-12 | Box integrity | box_enc | Box 200×100 with 8pt text, ratio 12.5 | screenshot zone-3 | P1 |
+```
+
+**Rule: if `validate_visual_quality.py` flagged the element as FAIL, it is P0. If it flagged as WARN, it is P1. The agent CANNOT downgrade pre-flight severity.** Screenshot-only findings are agent-graded but must be honestly assessed — an arrow passing through a box found only on screenshot is still P0.
+
+### 4.3 Fix All Defects In Priority Order
 
 After the inventory is complete, fix defects in order: P0 → P1 → P2. Do not fix P1s before P0s. Do not skip a P0 because it's "hard" — that's what makes it a P0.
 
@@ -167,7 +187,7 @@ Fix ALL P0 and P1 defects in the current cycle. Yes, ALL of them. Not just 3-5. 
 
 **Defer P2 defects only with an explicit reason.** "Ran out of time" is not a reason when the user hasn't set a time limit.
 
-### 4.3 Fix Verification (MANDATORY after each fix pass)
+### 4.4 Fix Verification (MANDATORY after each fix pass)
 
 After fixing defects and regenerating the preview:
 1. Take the new screenshot.
@@ -221,19 +241,19 @@ For each zone, explicitly answer: "Did I find problems here that the author miss
 
 | Zone | What to inspect ruthlessly | Minimum new findings |
 |------|---------------------------|---------------------|
-| 1. Text readability | Squint at every text element. Is it readable? Is any character clipped? Any text ghosting behind an arrow? Any text so small you'd need to zoom to read it? | 5+ |
-| 2. Arrow hygiene | Trace every arrow from source to target. Does it cross any box? Cross any text? Cross any icon? Cross another arrow? Is the arrowhead visible? Is the route the shortest clean path? Are there meaningless arrows? | 5+ |
+| 1. Text readability | Squint at every text element. Is it readable? Is any character clipped? Any text ghosting behind an arrow? Any text so small you'd need to zoom to read it? | 4+ |
+| 2. Arrow hygiene | Trace every arrow from source to target. Does it cross any box? Cross any text? Cross any icon? Cross another arrow? Is the arrowhead visible? Is the route the shortest clean path? Are there meaningless arrows? | 4+ |
 | 3. Box integrity | Check every box's size vs content. Any hollow giants? Any sardine cans? Any boxes with uneven internal padding? Any boxes overlapping? | 3+ |
 | 4. Spacing consistency | Measure gaps. Are same-type gaps identical? Are margins equal on all four sides? Is the grid rhythm visible or chaotic? Are any elements nearly touching? | 4+ |
-| 5. Color & style | Compare against the extracted style contract (Section 3). Every hex code. Every font size. Every stroke width. Any color that doesn't belong in the palette? Pure color blocks that mean nothing? | 4+ |
+| 5. Color & palette | Compare against the extracted style contract (Section 3). Every hex code. Every font size. Every stroke width. Any color that doesn't belong in the palette? Pure color blocks that mean nothing? | 3+ |
 | 6. Typography | Check font family, size, weight, alignment on every text cell. Does it match the style contract row by row? Is there a clear hierarchy (heading > subheading > body > caption)? | 3+ |
-| 7. Layout & composition | Step back. Does the overall composition feel like the reference family? Are regions in the right places? Is the flow direction consistent? Does the density match? | 3+ |
+| 7. Layout & composition | Step back. Does the overall composition feel like the reference family? Are regions in the right places? Is the flow direction consistent? Does the density match? | 4+ |
 | 8. Icons | Check every icon for size, color, alignment, and semantic correctness. Any two icons overlapping? Any icon the wrong size relative to its neighbors? Any icon that looks like cheap clipart? | 3+ |
-| 9. Overall aesthetic | Be brutally honest. Would you submit this to a top conference? If not — what would you change first? What are the 3 ugliest things about this diagram? | 3+ |
+| 9. Style coherence | Be brutally honest. Would you submit this to a top conference? If not — what would you change first? What are the 3 ugliest things about this diagram? | 2+ |
 
-**Total minimum across all zones: 30+.** A hostile reviewer who finds fewer than 30 problems is not hostile — they are lazy.
+**Total minimum: graduated (see Section 4.1 for the model).** The red-team examines the diagram AFTER 3 fix cycles. The default floor is **≥15 findings** — sufficient to prove hostile intent without forcing fabrication on a clean diagram. If the self-score card shows **≥45/50** (near-perfect), red-team minimum drops to **≥10** — this is a verification audit, not a full adversarial pass. Per-zone floors are proportionally reduced: halve each floor when the total minimum is 15, quarter when it is 10.
 
-**Minimum 30 findings across all zones.** A diagram with 30+ self-supervision defects does not become "clean" after one pass. The red-team must find at least 30 new or residual problems. If you found fewer than 30, you are colluding with the author, not auditing. Even professional designers find 30+ issues in their own work after 10 revision cycles. A hostile reviewer examining a 3-cycle-old diagram will find way more.
+A diagram with 30+ self-supervision defects does not become "clean" after one pass. But after 3 cycles of fixing 30+ defects per cycle, a genuinely clean diagram will have <10 residual issues. A hostile reviewer who "finds" 30 issues on such a diagram is fabricating compliance noise — real auditing finds real problems, even if there are only 10 of them.
 
 Record every red-team finding with the same format as the defect inventory (Section 4.1). Fix all P0 and P1 findings. Document P2 findings as acknowledged gaps.
 
@@ -250,11 +270,11 @@ Before offering the diagram to the user, you must score it yourself. Scores belo
 | Style match to reference/spec | /10 | |
 | **TOTAL** | **/50** | |
 
-**Handoff thresholds:**
+**Handoff thresholds (canonical — all files use these exact values):**
 
-- **TOTAL ≥ 40** and **no dimension ≤ 5** → allowed
-- **TOTAL 30–39** → borderline. List 5+ specific things you would fix in the next pass. Handoff only if the user explicitly asked for a quick result.
-- **TOTAL < 30** or **any dimension ≤ 4** → BLOCKED. You must continue iterating. Do not ask the user — just keep working.
+- **BLOCKED** — TOTAL < 30, OR any dimension ≤ 4. You must continue iterating. Do not ask the user — just keep working.
+- **BORDERLINE** — 30 ≤ TOTAL < 40 with no dimension ≤ 4. List 5+ specific things you would fix in the next pass. Handoff only if the user explicitly asked for a quick result.
+- **ALLOWED** — TOTAL ≥ 40 AND every dimension ≥ 6. A dimension scored 5 is NOT allowed — it is borderline; review and improve it before handoff.
 
 If you give yourself a score, you must explain why each point was deducted with concrete, screenshot-visible evidence. "Lost a point for overall feel" is not acceptable. "Font size 8pt on the `data_pipeline` box is illegible at normal zoom, confirmed by screenshot measurement — deducted 2 points" is.
 
@@ -323,9 +343,10 @@ A diagram can be handed off only after:
 - all P0 and P1 defects from the latest inventory were fixed
 - fix verification confirmed each claimed fix actually resolved the issue
 - no P0/P1 blockers remain unmentioned
-- at least 3 screenshot→inventory→fix→verify cycles are documented in the defect log
-- a red-team audit was performed across all 9 zones (≥ 20 findings)
-- self-score meets the threshold (TOTAL ≥ 40, no dimension ≤ 5)
+- at least 3 screenshot→inventory→fix→verify cycles are documented in the defect log (with graduated defect minima per cycle, see Section 4.1)
+- a red-team audit was performed across all 9 zones (≥15 findings; ≥10 if self-score ≥45/50 — see Section 5)
+- style-reference tasks: the latest screenshot was compared **side-by-side against the reference image** (not just against the extraction table) — mandatory every cycle
+- self-score meets the ALLOWED threshold (TOTAL ≥ 40 AND every dimension ≥ 6; a dimension of 5 is borderline — review and improve before handoff)
 - `validate_visual_quality.py` passed (zero FAILs) before the first preview
 - `validate_drawio.py` passed after the final XML edit
 - remaining approximations and P2 defects are explicitly listed

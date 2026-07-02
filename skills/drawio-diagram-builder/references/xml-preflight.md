@@ -34,14 +34,16 @@ Every edge path (source → waypoints → target) is tested against every vertex
 
 This catches: arrows cutting diagonally through unrelated boxes, connectors crossing text regions, waypoint-based paths that collide with shapes.
 
-### 2. Text Overflow Risk (FAIL)
+### 2. Text Overflow Risk (FAIL — with graduated severity)
 
 Estimated text rendering bounds vs container geometry:
-- `estimated_width ≈ char_count × font_size × 0.55` (Latin) or `× 0.9` (CJK)
+- `estimated_width ≈ char_count × font_size × 0.55` (Latin) or `× 0.9` (CJK) — approximate; draw.io may render differently
 - `estimated_height ≈ line_count × font_size × 1.35`
-- If estimated > container → text will overflow or clip
+- If estimated > container × 1.5 → FAIL (high-confidence overflow — text will definitely not fit)
+- If estimated > container × 1.1 but ≤ 1.5 → WARN (borderline — screenshot will reveal the truth)
+- If estimated ≤ container → pass
 
-This catches: tiny boxes with long labels, multi-line text stuffed into single-line containers, CJK text that is wider than the model assumed.
+This catches: tiny boxes with long labels, multi-line text stuffed into single-line containers, CJK text that is wider than the model assumed. Borderline cases are WARN, not FAIL — the approximate estimator should not block preview when text MAY actually fit.
 
 ### 3. Font–Container Proportionality (WARN)
 
@@ -56,6 +58,13 @@ This catches: "big box, tiny text" amateur look and "text crammed into a matchbo
 Two non-container, non-background vertices whose bounding rectangles intersect. Layout elements should not overlap unless one is explicitly a parent container.
 
 This catches: shapes placed on top of each other, text cells overlapping arrows, accidental z-order issues visible in geometry.
+
+### 4.5 Icon Consistency (WARN)
+
+Icons (image elements) are checked for size consistency:
+- If the largest icon is >3× the size of the smallest icon across the diagram → WARN
+
+This catches: a 60px icon next to 16px icons in the same row — a common amateur inconsistency that makes the figure look sloppy.
 
 ### 5. Spacing Variance (WARN)
 
@@ -104,6 +113,24 @@ Detects clusters of 3+ adjacent unlabeled colored shapes (15–120px each). Thes
 This catches the #1 amateur failure: an agent sees small colored squares in a top-conference reference and reproduces them in its own diagram — but the reference's squares represented real tokens/matrices, while the agent's squares represent nothing. The result is meaningless visual noise.
 
 Fix: either add a text label to each cell stating what it represents ("text", "image", "audio", "video" for a 4-modality token bar), or delete the cluster entirely and replace with a single labeled box. See `topconf-paper-style.md` "The First Principle" and `style-extraction.md` "Semantic Justification."
+
+### 11. Solitary Decorations (WARN)
+
+Catches individual isolated colored shapes (15–120px) that carry no semantic label — "below the cluster threshold" of rule #10. A single decorative square is still noise.
+
+This catches: a lone colored rectangle labeled "x" or "1" — the decoration-blocks check needs 3+ adjacent cells to fire, so individual decorations slip through. This rule catches the isolates.
+
+### 12. Typography Hierarchy (WARN)
+
+Checks whether font sizes form a deliberate hierarchy. If the ratio of the largest to smallest font size is < 1.5 (all text is near-identical), the diagram lacks heading/subheading/body/caption distinction.
+
+This catches: every text element at 11-12pt with no visual hierarchy — typical amateur output. Paper-quality figures use deliberate size steps: headings ~16-18pt, subheadings ~13-14pt, body ~10-12pt, captions ~8-9pt.
+
+### 13. Composition Density (WARN)
+
+Checks whether the canvas is suspiciously empty. If the diagram has < 6 shapes on a canvas > 800×600, the layout is under-developed.
+
+This catches: a 1600×1200 canvas with only 4 boxes — the diagram looks sparse and unfinished. Either reduce canvas size to fit content, or populate the additional regions a paper figure at this scale would normally contain.
 
 ## What The Pre-Flight CANNOT Catch (Still Needs Screenshot)
 

@@ -2,8 +2,9 @@
 """Pre-render static quality checks for draw.io (.drawio) XML files.
 
 Catches computable visual defects — arrow-box collisions, text overflow risk,
-font proportionality, spacing variance, color incoherence, overlaps, orphans —
-BEFORE the first screenshot.  Zero rendering needed.
+font proportionality, spacing variance, color incoherence, decoration blocks,
+orphans, font-size anomalies, edge density — BEFORE the first screenshot.
+Zero rendering needed.
 
 Usage:
   python validate_visual_quality.py diagram.drawio
@@ -44,6 +45,14 @@ class Rect:
     def y2(self) -> float:
         return self.y + self.h
 
+    @property
+    def cx(self) -> float:
+        return self.x + self.w / 2
+
+    @property
+    def cy(self) -> float:
+        return self.y + self.h / 2
+
     def intersects(self, other: Rect) -> bool:
         return (
             self.x < other.x2
@@ -80,6 +89,10 @@ class Vertex:
     is_edge: bool = False
     is_container: bool = False  # dashed, no fill, large
 
+    def effective_font_size(self) -> Optional[float]:
+        """Return fontSize if set, else draw.io default 12."""
+        return self.font_size if self.font_size else 12.0
+
 
 @dataclass
 class Edge:
@@ -91,15 +104,20 @@ class Edge:
     target_point: Optional[Tuple[float, float]] = None
     waypoints: List[Tuple[float, float]] = field(default_factory=list)
     style: str = ""
+    # Derived from source/target vertex centers when no explicit mxPoint exists (#1)
+    derived_source: Optional[Tuple[float, float]] = None
+    derived_target: Optional[Tuple[float, float]] = None
 
     @property
     def all_points(self) -> List[Tuple[float, float]]:
         pts = []
-        if self.source_point:
-            pts.append(self.source_point)
+        sp = self.source_point if self.source_point else self.derived_source
+        tp = self.target_point if self.target_point else self.derived_target
+        if sp:
+            pts.append(sp)
         pts.extend(self.waypoints)
-        if self.target_point:
-            pts.append(self.target_point)
+        if tp:
+            pts.append(tp)
         return pts
 
 
@@ -113,10 +131,11 @@ class Finding:
 
 
 # ---------------------------------------------------------------------------
-# Parsing
+# Parsing helpers
 # ---------------------------------------------------------------------------
 
 _STYLE_RE = re.compile(r"([a-zA-Z0-9_]+)(?:=([^;]*))?")
+_HTML_TAG_RE = re.compile(r'<[^>]*>')
 
 
 def _parse_style(style_str: str) -> Dict[str, str]:
@@ -148,19 +167,54 @@ def _parse_font_size(raw: Optional[str]) -> Optional[float]:
         return None
 
 
+def _strip_html(text: str) -> str:
+    """Remove HTML tags and common XML entities for character counting."""
+    stripped = _HTML_TAG_RE.sub('', text)
+    stripped = stripped.replace('&amp;', '&').replace('&lt;', '<').replace('&gt;', '>')
+    stripped = stripped.replace('&quot;', '"').replace('&#39;', "'")
+    stripped = stripped.replace('&nbsp;', ' ')
+    return stripped
+
+
+def _is_semantic_label(text: str) -> bool:
+    """Check if a label carries semantic meaning or is just decorative.
+
+    Decorative evasion patterns: '1', '2 3 4', 'x', '●', ' ', 'A', 'B', single-digit
+    or single-alpha sequences, short pure-numeric sequences.
+    Real labels: words, phrases, abbreviations, multi-character identifiers.
+    """
+    stripped = text.strip()
+    if not stripped:
+        return False
+    # Single char (digit, symbol, or single letter) → decoration marker
+    if len(stripped) == 1:
+        return False
+    # Very short strings with only digits/symbols → decoration
+    if len(stripped) <= 2 and not any(c.isalpha() for c in stripped):
+        return False
+    # Pure numeric sequence like "1 2 3 4" → likely decoration
+    if all(c.isdigit() or c.isspace() for c in stripped) and len(stripped.replace(' ', '')) <= 6:
+        return False
+    return True
+
+
 def _estimate_text_bounds(
     text: str, font_size: float, container_width: float
 ) -> Tuple[float, float]:
     """Return estimated (width, height) in px for rendered text.
-
-    Very rough heuristic — draw.io rendering varies by font and OS.
+    HTML tags are stripped before counting (#10).
     """
     if not text or font_size <= 0:
         return 0, 0
 
-    # Average character width: ~0.55×font_size for Latin, ~0.9× for CJK
-    latin_chars = sum(1 for c in text if ord(c) < 0x2E80)
-    cjk_chars = len(text) - latin_chars
+    # Strip HTML to avoid inflating text estimate (#10)
+    clean = _strip_html(text)
+    if not clean:
+        return 0, 0
+
+    # Average character width: ~0.58×font_size for Latin, ~0.92× for CJK
+    latin_chars = sum(1 for c in clean if ord(c) < 0x2E80)
+    cjk_chars = len(clean) - latin_chars
     char_width = font_size * 0.58
     cjk_width = font_size * 0.92
     total_width = latin_chars * char_width + cjk_chars * cjk_width
@@ -169,7 +223,7 @@ def _estimate_text_bounds(
     if container_width > 0 and total_width > container_width:
         lines = math.ceil(total_width / container_width)
     else:
-        lines = text.count("\n") + 1
+        lines = clean.count("\n") + 1
 
     line_height = font_size * 1.35
     return (min(total_width, container_width) if container_width > 0 else total_width,
@@ -189,7 +243,7 @@ def _line_segments(
 def _seg_rect_intersect(
     x1: float, y1: float, x2: float, y2: float, r: Rect
 ) -> bool:
-    """Cohen-Sutherland based check: does line segment intersect rectangle?"""
+    """Does line segment intersect rectangle? Cohen-Sutherland with collinear fallback."""
     # Quick reject: both points left/right/above/below
     if (max(x1, x2) < r.x or min(x1, x2) > r.x2 or
             max(y1, y2) < r.y or min(y1, y2) > r.y2):
@@ -213,15 +267,35 @@ def _seg_rect_intersect(
 def _lines_intersect(
     x1, y1, x2, y2, x3, y3, x4, y4
 ) -> bool:
-    """Check if two line segments intersect (excluding collinear)."""
+    """Check if two line segments intersect. Handles collinear overlap (#9)."""
     def ccw(ax, ay, bx, by, cx, cy):
-        return (cy - ay) * (bx - ax) > (by - ay) * (cx - ax)
+        return (cy - ay) * (bx - ax) - (by - ay) * (cx - ax)
 
-    return (
-        ccw(x1, y1, x3, y3, x4, y4) != ccw(x2, y2, x3, y3, x4, y4)
-        and ccw(x1, y1, x2, y2, x3, y3) != ccw(x1, y1, x2, y2, x4, y4)
-    )
+    o1 = ccw(x1, y1, x2, y2, x3, y3)
+    o2 = ccw(x1, y1, x2, y2, x4, y4)
+    o3 = ccw(x3, y3, x4, y4, x1, y1)
+    o4 = ccw(x3, y3, x4, y4, x2, y2)
 
+    # Standard ccw test
+    if ((o1 > 0) != (o2 > 0)) and ((o3 > 0) != (o4 > 0)):
+        return True
+
+    # Collinear overlap check (#9): all ccw zero AND projections overlap
+    if o1 == 0 and o2 == 0 and o3 == 0 and o4 == 0:
+        # Project onto bounding intervals
+        min1x, max1x = min(x1, x2), max(x1, x2)
+        min1y, max1y = min(y1, y2), max(y1, y2)
+        min2x, max2x = min(x3, x4), max(x3, x4)
+        min2y, max2y = min(y3, y4), max(y3, y4)
+        if max1x >= min2x and max2x >= min1x and max1y >= min2y and max2y >= min1y:
+            return True
+
+    return False
+
+
+# ---------------------------------------------------------------------------
+# Parsing
+# ---------------------------------------------------------------------------
 
 def parse_drawio(path: Path) -> Tuple[List[Vertex], List[Edge], float, float]:
     """Parse a .drawio file and return vertices, edges, canvas width, height."""
@@ -235,11 +309,6 @@ def parse_drawio(path: Path) -> Tuple[List[Vertex], List[Edge], float, float]:
         for model in diagram.iter("mxGraphModel"):
             page_w = float(model.get("pageWidth", 1600))
             page_h = float(model.get("pageHeight", 1200))
-
-            cell_elements = {}
-            for cell in model.findall(".//mxCell"):
-                cid = cell.get("id", "")
-                cell_elements[cid] = cell
 
             for cell in model.findall(".//mxCell"):
                 cid = cell.get("id", "")
@@ -331,6 +400,16 @@ def parse_drawio(path: Path) -> Tuple[List[Vertex], List[Edge], float, float]:
 
                     vertices.append(v)
 
+    # --- Resolve edge endpoints from vertex rects when explicit mxPoints are missing (#1) ---
+    vertex_rects = {v.id: v.rect for v in vertices}
+    for edge in edges:
+        if edge.source_point is None and edge.source_id in vertex_rects:
+            r = vertex_rects[edge.source_id]
+            edge.derived_source = (r.cx, r.cy)
+        if edge.target_point is None and edge.target_id in vertex_rects:
+            r = vertex_rects[edge.target_id]
+            edge.derived_target = (r.cx, r.cy)
+
     return vertices, edges, page_w, page_h
 
 
@@ -342,8 +421,11 @@ def parse_drawio(path: Path) -> Tuple[List[Vertex], List[Edge], float, float]:
 def check_arrow_box_collision(
     vertices: List[Vertex], edges: List[Edge]
 ) -> List[Finding]:
+    """Arrow-box collision check — now covers text vertices too (#5) and
+    edges without explicit mxPoints via derived endpoints (#1)."""
     findings = []
-    non_container = [v for v in vertices if not v.is_container and not v.is_text]
+    # Include all vertices EXCEPT containers (text, shape, and image all checked)
+    check_targets = [v for v in vertices if not v.is_container]
     rects = {v.id: v.rect for v in vertices}
 
     for edge in edges:
@@ -355,8 +437,9 @@ def check_arrow_box_collision(
         tgt_id = edge.target_id
 
         for seg in segs:
-            for v in non_container:
-                if v.id == src_id or v.id == tgt_id:
+            for v in check_targets:
+                # Skip the edge's own source/target (#7 fix: only skip if ref is valid)
+                if (v.id == src_id and src_id in rects) or (v.id == tgt_id and tgt_id in rects):
                     continue
                 if _seg_rect_intersect(*seg, v.rect):
                     findings.append(Finding(
@@ -368,6 +451,7 @@ def check_arrow_box_collision(
                         detail={
                             "edge_id": edge.id,
                             "box_id": v.id,
+                            "box_type": "text" if v.is_text else ("image" if v.is_image else "shape"),
                             "box_rect": f"{v.rect.x:.0f},{v.rect.y:.0f} {v.rect.w:.0f}×{v.rect.h:.0f}",
                             "segment": f"({seg[0]:.0f},{seg[1]:.0f})→({seg[2]:.0f},{seg[3]:.0f})",
                         },
@@ -380,13 +464,21 @@ def check_arrow_box_collision(
 def check_text_overflow(vertices: List[Vertex]) -> List[Finding]:
     findings = []
     for v in vertices:
-        text = v.value.strip()
-        if not text or v.font_size is None or v.rect.w <= 0 or v.rect.h <= 0:
+        text = _strip_html(v.value)  # #10: strip HTML before checking
+        text = text.strip()
+        if not text or v.rect.w <= 0 or v.rect.h <= 0:
+            continue
+        # #11: use effective font size (default 12 if None)
+        fs = v.effective_font_size()
+        if fs is None:
             continue
 
-        est_w, est_h = _estimate_text_bounds(text, v.font_size, v.rect.w)
+        est_w, est_h = _estimate_text_bounds(text, fs, v.rect.w)
 
-        if est_h > v.rect.h * 1.05:
+        # Graduated severity (#P2.3): borderline overflow is WARN — the
+        # estimator is approximate; draw.io may render text differently.
+        # Only high-confidence overflow (>1.5x) blocks preview.
+        if est_h > v.rect.h * 1.5:
             findings.append(Finding(
                 severity="FAIL",
                 rule="text-overflow-vertical",
@@ -394,16 +486,31 @@ def check_text_overflow(vertices: List[Vertex]) -> List[Finding]:
                 message=f"Text in '{v.id}' overflows vertically: "
                         f"estimated {est_h:.0f}px needed, container is {v.rect.h:.0f}px tall. "
                         f"Text: \"{text[:60]}{'...' if len(text)>60 else ''}\" "
-                        f"(fontSize={v.font_size}, width={v.rect.w:.0f})",
+                        f"(fontSize={fs}, width={v.rect.w:.0f})",
                 detail={
                     "estimated_height": round(est_h, 1),
                     "container_height": v.rect.h,
-                    "font_size": v.font_size,
+                    "font_size": fs,
+                    "text_preview": text[:100],
+                },
+            ))
+        elif est_h > v.rect.h * 1.05:
+            findings.append(Finding(
+                severity="WARN",
+                rule="text-overflow-vertical",
+                element_id=v.id,
+                message=f"Text in '{v.id}' may overflow vertically (borderline): "
+                        f"estimated {est_h:.0f}px needed, container is {v.rect.h:.0f}px tall. "
+                        f"Verify with screenshot — draw.io may fit the text.",
+                detail={
+                    "estimated_height": round(est_h, 1),
+                    "container_height": v.rect.h,
+                    "font_size": fs,
                     "text_preview": text[:100],
                 },
             ))
 
-        if est_w > v.rect.w * 1.1 and v.rect.w > 0:
+        if est_w > v.rect.w * 1.5 and v.rect.w > 0:
             findings.append(Finding(
                 severity="FAIL",
                 rule="text-overflow-horizontal",
@@ -414,7 +521,22 @@ def check_text_overflow(vertices: List[Vertex]) -> List[Finding]:
                 detail={
                     "estimated_width": round(est_w, 1),
                     "container_width": v.rect.w,
-                    "font_size": v.font_size,
+                    "font_size": fs,
+                    "text_preview": text[:100],
+                },
+            ))
+        elif est_w > v.rect.w * 1.1 and v.rect.w > 0:
+            findings.append(Finding(
+                severity="WARN",
+                rule="text-overflow-horizontal",
+                element_id=v.id,
+                message=f"Text in '{v.id}' may overflow horizontally (borderline): "
+                        f"estimated {est_w:.0f}px needed, container is {v.rect.w:.0f}px wide. "
+                        f"Verify with screenshot — draw.io may fit the text.",
+                detail={
+                    "estimated_width": round(est_w, 1),
+                    "container_width": v.rect.w,
+                    "font_size": fs,
                     "text_preview": text[:100],
                 },
             ))
@@ -425,24 +547,28 @@ def check_text_overflow(vertices: List[Vertex]) -> List[Finding]:
 def check_font_proportionality(vertices: List[Vertex]) -> List[Finding]:
     findings = []
     for v in vertices:
-        if v.font_size is None or v.rect.h <= 0 or v.is_container or v.is_image:
+        if v.rect.h <= 0 or v.is_container or v.is_image:
             continue
-        text = v.value.strip()
+        text = _strip_html(v.value).strip()
         if not text:
             continue
+        fs = v.effective_font_size()
+        if fs is None or fs <= 0:
+            continue
 
-        ratio = v.rect.h / v.font_size
-        width_ratio = v.rect.w / v.font_size if v.font_size > 0 else 0
+        ratio = v.rect.h / fs
+        width_ratio = v.rect.w / fs if fs > 0 else 0
 
-        if ratio > 12:
+        # Cavernous: box much taller than font (#11: tighter threshold, use effective font)
+        if ratio > 10:
             findings.append(Finding(
                 severity="WARN",
                 rule="font-box-cavernous",
                 element_id=v.id,
-                message=f"Box '{v.id}' is {v.rect.h:.0f}px tall with fontSize={v.font_size} "
+                message=f"Box '{v.id}' is {v.rect.h:.0f}px tall with effective fontSize={fs} "
                         f"(ratio {ratio:.1f}:1). Text will look tiny and lost. "
                         f"Either shrink box or increase font.",
-                detail={"box_height": v.rect.h, "font_size": v.font_size,
+                detail={"box_height": v.rect.h, "font_size": fs,
                          "ratio": round(ratio, 1)},
             ))
 
@@ -451,44 +577,56 @@ def check_font_proportionality(vertices: List[Vertex]) -> List[Finding]:
                 severity="FAIL",
                 rule="font-box-cramped",
                 element_id=v.id,
-                message=f"Box '{v.id}' is {v.rect.h:.0f}px tall with fontSize={v.font_size} "
+                message=f"Box '{v.id}' is {v.rect.h:.0f}px tall with effective fontSize={fs} "
                         f"(ratio {ratio:.1f}:1). Text will be squeezed or clipped.",
-                detail={"box_height": v.rect.h, "font_size": v.font_size,
+                detail={"box_height": v.rect.h, "font_size": fs,
                          "ratio": round(ratio, 1)},
             ))
 
-        # Check width proportion for text-only cells
-        if v.is_text and width_ratio > 30 and len(text) < 5:
+        # Widened: shape boxes with short text in very wide boxes (not just is_text)
+        if width_ratio > 25 and len(_strip_html(text)) < 6:
             findings.append(Finding(
                 severity="WARN",
                 rule="font-box-wide-empty",
                 element_id=v.id,
-                message=f"Text cell '{v.id}' is {v.rect.w:.0f}px wide for "
-                        f"fontSize={v.font_size} with short text '{text}'. "
-                        f"Box is disproportionately wide.",
-                detail={"box_width": v.rect.w, "font_size": v.font_size,
-                         "text": text},
+                message=f"Box '{v.id}' is {v.rect.w:.0f}px wide for "
+                        f"effective fontSize={fs} with short text '{text}'. "
+                        f"Box is disproportionately wide. Reduce width or increase font.",
+                detail={"box_width": v.rect.w, "font_size": fs,
+                         "text": text[:50]},
             ))
 
     return findings
 
 
 def check_element_overlap(vertices: List[Vertex]) -> List[Finding]:
+    """Check for overlapping elements. Now includes images/icons (#24) and
+    skips parent-child relationships (#20)."""
     findings = []
-    shapes = [v for v in vertices if v.is_shape and not v.is_container]
+    # Include both shapes and images (icons) in overlap check (#24)
+    shapes = [v for v in vertices if (v.is_shape or v.is_image) and not v.is_container]
     for i in range(len(shapes)):
         for j in range(i + 1, len(shapes)):
             a, b = shapes[i], shapes[j]
+            # Skip parent-child relationships (#20)
+            if a.parent == b.id or b.parent == a.id:
+                continue
+            # Skip if they share the same non-"1" parent (siblings in same group)
+            if a.parent == b.parent and a.parent not in ("", "1"):
+                continue
             if a.rect.intersects(b.rect):
                 findings.append(Finding(
                     severity="FAIL",
                     rule="element-overlap",
                     element_id=a.id,
-                    message=f"Box '{a.id}' overlaps box '{b.id}': "
+                    message=f"Element '{a.id}' ({'icon' if a.is_image else 'shape'}) "
+                            f"overlaps '{b.id}' ({'icon' if b.is_image else 'shape'}): "
                             f"({a.rect.x:.0f},{a.rect.y:.0f} {a.rect.w:.0f}×{a.rect.h:.0f}) "
                             f"vs ({b.rect.x:.0f},{b.rect.y:.0f} {b.rect.w:.0f}×{b.rect.h:.0f})",
                     detail={
-                        "box_a": a.id, "box_b": b.id,
+                        "elem_a": a.id, "elem_b": b.id,
+                        "a_type": "icon" if a.is_image else "shape",
+                        "b_type": "icon" if b.is_image else "shape",
                         "rect_a": f"{a.rect.x:.0f},{a.rect.y:.0f} {a.rect.w:.0f}×{a.rect.h:.0f}",
                         "rect_b": f"{b.rect.x:.0f},{b.rect.y:.0f} {b.rect.w:.0f}×{b.rect.h:.0f}",
                     },
@@ -496,30 +634,100 @@ def check_element_overlap(vertices: List[Vertex]) -> List[Finding]:
     return findings
 
 
+def check_icon_consistency(vertices: List[Vertex]) -> List[Finding]:
+    """Check icon size consistency (#24). Flags when icons vary wildly in size."""
+    findings = []
+    icons = [v for v in vertices if v.is_image and v.rect.w > 0 and v.rect.h > 0]
+    if len(icons) < 3:
+        return findings
+
+    # Group by approximate size and check variance
+    sizes = [(v.rect.w, v.rect.h) for v in icons]
+    max_w = max(s[0] for s in sizes)
+    min_w = min(s[0] for s in sizes)
+    max_h = max(s[1] for s in sizes)
+    min_h = min(s[1] for s in sizes)
+
+    if min_w > 0 and max_w / min_w > 3:
+        # Representative mid-size icon anchor for diagnostic context
+        mid_icon = sorted([v for v in icons], key=lambda v: v.rect.w)[len(icons)//2]
+        findings.append(Finding(
+            severity="WARN",
+            rule="icon-inconsistent-size",
+            element_id=mid_icon.id,
+            message=f"Icon sizes vary widely: {min_w:.0f}–{max_w:.0f}px wide, "
+                    f"{min_h:.0f}–{max_h:.0f}px tall. "
+                    f"Use consistent icon dimensions (e.g., all 24×24 or all 32×32).",
+            detail={"min_w": min_w, "max_w": max_w, "min_h": min_h, "max_h": max_h,
+                     "icon_count": len(icons)},
+        ))
+
+    return findings
+
+
+def _cluster_by_axis(values: List[float], threshold: float) -> Dict[int, List[int]]:
+    """Cluster indices by axis value, grouping values within threshold.
+    Returns {cluster_key: [indices]}.
+    Fixed replacement for round(y/15)*15 row grouping (#22)."""
+    if not values:
+        return {}
+    indexed = sorted(enumerate(values), key=lambda x: x[1])
+    clusters = {}
+    current_cluster = [indexed[0][0]]
+    current_key = indexed[0][1]
+
+    for idx, val in indexed[1:]:
+        if abs(val - current_key) <= threshold:
+            current_cluster.append(idx)
+            current_key = val  # rolling anchor: compare against last-admitted value
+        else:
+            clusters[round(current_key)] = current_cluster
+            current_cluster = [idx]
+            current_key = val
+    clusters[round(current_key)] = current_cluster
+    return clusters
+
+
 def check_spacing_variance(vertices: List[Vertex]) -> List[Finding]:
+    """Check spacing consistency — now covers BOTH horizontal rows AND vertical
+    columns (#21), uses cluster-based grouping (#22), and flags negative gaps
+    (overlaps) instead of discarding them (#23)."""
     findings = []
     shapes = [
         v for v in vertices
-        if v.is_shape and not v.is_container and v.rect.w > 0 and v.rect.h > 0
+        if (v.is_shape or v.is_image) and not v.is_container
+        and v.rect.w > 0 and v.rect.h > 0
     ]
     if len(shapes) < 3:
         return findings
 
-    # Group by approximate row (y within 15px)
-    rows: Dict[int, List[Vertex]] = defaultdict(list)
-    for v in shapes:
-        row_key = round(v.rect.y / 15) * 15
-        rows[row_key].append(v)
-
-    for row_key, row_shapes in rows.items():
-        if len(row_shapes) < 3:
+    # ---- Horizontal (row) spacing ----
+    y_clusters = _cluster_by_axis([v.rect.y for v in shapes], 15)
+    for key, indices in y_clusters.items():
+        if len(indices) < 3:
             continue
-        row_shapes.sort(key=lambda v: v.rect.x)
+        row_items = [shapes[i] for i in indices]
+        row_items.sort(key=lambda v: v.rect.x)
+
         gaps = []
-        for i in range(len(row_shapes) - 1):
-            gap = row_shapes[i + 1].rect.x - row_shapes[i].rect.x2
-            if gap > 0:
+        overlaps = []
+        for i in range(len(row_items) - 1):
+            gap = row_items[i + 1].rect.x - row_items[i].rect.x2
+            if gap >= 0:
                 gaps.append(gap)
+            else:
+                overlaps.append((row_items[i].id, row_items[i + 1].id, gap))
+
+        # Flag overlaps (#23: negative gaps → overlap FAIL, not discarded)
+        for a_id, b_id, gap in overlaps:
+            findings.append(Finding(
+                severity="FAIL",
+                rule="element-overlap-row",
+                element_id=a_id,
+                message=f"Boxes '{a_id}' and '{b_id}' overlap horizontally in row "
+                        f"(gap={gap:.0f}px). Adjust positions.",
+                detail={"box_a": a_id, "box_b": b_id, "gap": round(gap, 1)},
+            ))
 
         if len(gaps) < 2:
             continue
@@ -534,29 +742,96 @@ def check_spacing_variance(vertices: List[Vertex]) -> List[Finding]:
         if cv > 0.5:
             findings.append(Finding(
                 severity="WARN",
-                rule="spacing-inconsistent",
-                element_id=row_shapes[0].id,
-                message=f"Row at y≈{row_key}: horizontal gaps vary wildly "
+                rule="spacing-inconsistent-h",
+                element_id=row_items[0].id,
+                message=f"Row at y≈{row_items[0].rect.y:.0f}: horizontal gaps vary "
                         f"(gaps={[f'{g:.0f}' for g in gaps]}, "
                         f"mean={mean_gap:.0f}, cv={cv:.2f}). "
                         f"Use uniform spacing.",
                 detail={
-                    "row_y": row_key,
+                    "row_y": round(row_items[0].rect.y),
                     "gaps": [round(g, 1) for g in gaps],
                     "mean": round(mean_gap, 1),
                     "cv": round(cv, 2),
-                    "element_ids": [v.id for v in row_shapes],
+                    "element_ids": [v.id for v in row_items],
                 },
             ))
 
-        if min(gaps) < 3:
+        if gaps and min(gaps) < 3:
             findings.append(Finding(
                 severity="FAIL",
-                rule="spacing-too-tight",
-                element_id=row_shapes[0].id,
-                message=f"Row at y≈{row_key}: min gap is {min(gaps):.0f}px — "
-                        f"elements nearly touch. Add breathing room.",
-                detail={"row_y": row_key, "min_gap": round(min(gaps), 1)},
+                rule="spacing-too-tight-h",
+                element_id=row_items[0].id,
+                message=f"Row at y≈{row_items[0].rect.y:.0f}: min horizontal gap is "
+                        f"{min(gaps):.0f}px — elements nearly touch. Add breathing room.",
+                detail={"row_y": round(row_items[0].rect.y),
+                         "min_gap": round(min(gaps), 1)},
+            ))
+
+    # ---- Vertical (column) spacing (#21) ----
+    x_clusters = _cluster_by_axis([v.rect.x for v in shapes], 15)
+    for key, indices in x_clusters.items():
+        if len(indices) < 3:
+            continue
+        col_items = [shapes[i] for i in indices]
+        col_items.sort(key=lambda v: v.rect.y)
+
+        gaps = []
+        overlaps = []
+        for i in range(len(col_items) - 1):
+            gap = col_items[i + 1].rect.y - col_items[i].rect.y2
+            if gap >= 0:
+                gaps.append(gap)
+            else:
+                overlaps.append((col_items[i].id, col_items[i + 1].id, gap))
+
+        for a_id, b_id, gap in overlaps:
+            findings.append(Finding(
+                severity="FAIL",
+                rule="element-overlap-col",
+                element_id=a_id,
+                message=f"Boxes '{a_id}' and '{b_id}' overlap vertically in column "
+                        f"(gap={gap:.0f}px). Adjust positions.",
+                detail={"box_a": a_id, "box_b": b_id, "gap": round(gap, 1)},
+            ))
+
+        if len(gaps) < 2:
+            continue
+
+        mean_gap = sum(gaps) / len(gaps)
+        if mean_gap < 1:
+            continue
+        variance = sum((g - mean_gap) ** 2 for g in gaps) / len(gaps)
+        stddev = math.sqrt(variance)
+        cv = stddev / mean_gap
+
+        if cv > 0.5:
+            findings.append(Finding(
+                severity="WARN",
+                rule="spacing-inconsistent-v",
+                element_id=col_items[0].id,
+                message=f"Column at x≈{col_items[0].rect.x:.0f}: vertical gaps vary "
+                        f"(gaps={[f'{g:.0f}' for g in gaps]}, "
+                        f"mean={mean_gap:.0f}, cv={cv:.2f}). "
+                        f"Use uniform spacing.",
+                detail={
+                    "col_x": round(col_items[0].rect.x),
+                    "gaps": [round(g, 1) for g in gaps],
+                    "mean": round(mean_gap, 1),
+                    "cv": round(cv, 2),
+                    "element_ids": [v.id for v in col_items],
+                },
+            ))
+
+        if gaps and min(gaps) < 3:
+            findings.append(Finding(
+                severity="FAIL",
+                rule="spacing-too-tight-v",
+                element_id=col_items[0].id,
+                message=f"Column at x≈{col_items[0].rect.x:.0f}: min vertical gap is "
+                        f"{min(gaps):.0f}px — elements nearly touch. Add breathing room.",
+                detail={"col_x": round(col_items[0].rect.x),
+                         "min_gap": round(min(gaps), 1)},
             ))
 
     return findings
@@ -600,13 +875,6 @@ def check_color_coherence(vertices: List[Vertex]) -> List[Finding]:
 def check_orphan_labels(vertices: List[Vertex], edges: List[Edge]) -> List[Finding]:
     findings = []
 
-    # Edges without labels
-    for edge in edges:
-        if not edge.label:
-            # Some edges legitimately don't need labels (structural connectors),
-            # but flag them so the agent verifies intent.
-            pass  # Too noisy as FAIL; the semantic audit in self-supervision catches this
-
     # Shapes with empty value and significant size (> 60x30)
     for v in vertices:
         if v.is_shape and not v.value.strip() and v.rect.w > 60 and v.rect.h > 30:
@@ -625,93 +893,109 @@ def check_orphan_labels(vertices: List[Vertex], edges: List[Edge]) -> List[Findi
 def check_font_size_anomalies(vertices: List[Vertex]) -> List[Finding]:
     findings = []
     for v in vertices:
-        if v.font_size is None:
+        fs = v.effective_font_size()  # #11: use effective font (default 12)
+        if fs is None:
             continue
-        if v.font_size < 7:
+        if fs < 7:
             findings.append(Finding(
                 severity="FAIL",
                 rule="font-too-small",
                 element_id=v.id,
-                message=f"'{v.id}' uses fontSize={v.font_size} — likely illegible. "
+                message=f"'{v.id}' uses fontSize={v.font_size or '(inherited)'} "
+                        f"(effective {fs}pt) — likely illegible. "
                         f"Minimum 8pt for body, 10pt recommended.",
-                detail={"font_size": v.font_size, "element_id": v.id},
+                detail={"font_size": fs, "element_id": v.id, "inherited": v.font_size is None},
             ))
-        if v.font_size > 48 and v.is_text:
+        if fs > 48 and v.is_text:
             findings.append(Finding(
                 severity="WARN",
                 rule="font-too-large",
                 element_id=v.id,
-                message=f"'{v.id}' uses fontSize={v.font_size} — verify this is "
+                message=f"'{v.id}' uses fontSize={fs} — verify this is "
                         f"intentional (heading?) and not a copy-paste error.",
-                detail={"font_size": v.font_size, "element_id": v.id},
+                detail={"font_size": fs, "element_id": v.id},
             ))
     return findings
 
 
 def check_decoration_blocks(vertices: List[Vertex]) -> List[Finding]:
-    """Detect unlabeled colored shapes that carry no semantic load.
+    """Detect clustered shapes that carry no semantic load.
 
-    The #1 amateur failure: an agent copies a reference figure's token bars or
-    matrix grids as decorative colored squares, without any content behind them.
-    A colored shape with no text label, no children, and small-to-medium size is
-    almost certainly meaningless decoration. Flag clusters of such shapes.
+    #6 (semantic label check): a shape whose label is just numbers,
+    single chars, or whitespace is still decoration — not evaded by
+    labeling cells '1 2 3 4'.
+
+    #7 (chain-grow + bidirectional): grows clusters iteratively from
+    the last added cell, checking both left and right adjacency,
+    so runs of any length and in any direction are caught.
     """
     findings = []
 
     # Candidate decoration blocks: filled, non-container, non-image, non-text,
-    # no value label, small enough to be a "cell" (not a major region).
+    # no SEMANTIC label, small-to-medium size.
     candidates = []
     for v in vertices:
         if v.is_container or v.is_image or v.is_text:
             continue
-        if v.value.strip():  # has a label → probably meaningful
-            continue
         if v.fill_color is None or v.fill_color == "none":
             continue
-        # Small-to-medium size: typical token-bar cell or matrix cell
-        # (not a giant background region, not a tiny icon)
         if 15 <= v.rect.w <= 120 and 15 <= v.rect.h <= 120:
-            candidates.append(v)
+            # #6: check label has semantic content, not just digits/symbols
+            if not _is_semantic_label(v.value):
+                candidates.append(v)
 
-    # Group candidates that are adjacent (same row or column, within 1.5× cell size)
-    # A cluster of 3+ adjacent unlabeled colored cells = likely decorative token/matrix strip
+    # #7: chain-grow clusters with iterative frontier expansion + bidirectional check
     visited = set()
     for seed in candidates:
         if seed.id in visited:
             continue
         cluster = [seed]
         visited.add(seed.id)
-        # Find same-row neighbors
-        for other in candidates:
-            if other.id in visited:
-                continue
-            same_row = abs(other.rect.y - seed.rect.y) < 8
-            same_col = abs(other.rect.x - seed.rect.x) < 8
-            adjacent_row = same_row and abs(other.rect.x - seed.rect.x2) < seed.rect.w * 1.5
-            adjacent_col = same_col and abs(other.rect.y - seed.rect.y2) < seed.rect.h * 1.5
-            if adjacent_row or adjacent_col:
-                cluster.append(other)
-                visited.add(other.id)
+
+        # Grow cluster iteratively: for each member, find unvisited adjacent candidates
+        idx = 0
+        while idx < len(cluster):
+            member = cluster[idx]
+            for other in candidates:
+                if other.id in visited:
+                    continue
+                same_row = abs(other.rect.y - member.rect.y) < 8
+                same_col = abs(other.rect.x - member.rect.x) < 8
+                # Check both directions (left and right, above and below)
+                gap_r = abs(other.rect.x - member.rect.x2)
+                gap_l = abs(member.rect.x - other.rect.x2)
+                gap_b = abs(other.rect.y - member.rect.y2)
+                gap_t = abs(member.rect.y - other.rect.y2)
+                adjacent_row = same_row and min(gap_r, gap_l) < member.rect.w * 1.5
+                adjacent_col = same_col and min(gap_b, gap_t) < member.rect.h * 1.5
+                if adjacent_row or adjacent_col:
+                    cluster.append(other)
+                    visited.add(other.id)
+            idx += 1
 
         if len(cluster) >= 3:
             ids = [c.id for c in cluster]
             colors = sorted({c.fill_color for c in cluster if c.fill_color})
+            labels = [c.value.strip() for c in cluster if c.value.strip()]
             findings.append(Finding(
                 severity="WARN",
                 rule="decoration-block-cluster",
                 element_id=seed.id,
-                message=f"Cluster of {len(cluster)} adjacent unlabeled colored shapes "
+                message=f"Cluster of {len(cluster)} adjacent colored shapes "
                         f"(ids: {ids[:5]}{'...' if len(ids)>5 else ''}, "
-                        f"colors: {colors}). These look like decorative token/matrix "
-                        f"cells copied from a reference without semantic content. "
-                        f"Either add a text label to each cell stating what it represents, "
-                        f"or delete the cluster and use a single labeled box. "
+                        f"colors: {colors}, labels: {labels[:5] if labels else 'none'}). "
+                        f"These look like decorative token/matrix cells copied from a "
+                        f"reference without semantic content. "
+                        f"Either add meaningful text labels (not just '1 2 3 4') stating "
+                        f"what each cell represents, or delete the cluster and replace "
+                        f"with a single labeled box. "
                         f"Paper figures use colored cells to represent REAL data "
-                        f"(tokens, matrix entries) — empty colored cells are noise.",
+                        f"(tokens, matrix entries) — empty or trivially labeled cells are noise.",
                 detail={
                     "cluster_size": len(cluster),
                     "element_ids": ids,
                     "fill_colors": colors,
+                    "labels": labels,
                     "rects": [f"{c.rect.x:.0f},{c.rect.y:.0f} {c.rect.w:.0f}×{c.rect.h:.0f}"
                               for c in cluster[:6]],
                 },
@@ -749,6 +1033,118 @@ def check_edge_density(edges: List[Edge], page_w: float, page_h: float) -> List[
     return findings
 
 
+def check_typography_hierarchy(vertices: List[Vertex]) -> List[Finding]:
+    """Check that fonts have deliberate hierarchy, not all-same-size (#P1).
+
+    A diagram where all text is 11pt has no heading/subheading/body/caption
+    distinction — typical amateur output. A paper-quality figure uses
+    deliberate size steps: heading ~16-18pt, subheading ~13-14pt,
+    body ~10-12pt, caption ~8-9pt.
+    """
+    findings = []
+    sizes = []
+    for v in vertices:
+        fs = v.effective_font_size()
+        if fs is None or not v.value.strip():
+            continue
+        sizes.append(fs)
+
+    if len(sizes) < 3:
+        return findings
+
+    max_sz = max(sizes)
+    min_sz = min(sizes)
+
+    # If the ratio of largest to smallest font is < 1.5, there's no
+    # discernible hierarchy — everything is roughly the same size.
+    if min_sz > 0 and max_sz / min_sz < 1.5:
+        findings.append(Finding(
+            severity="WARN",
+            rule="no-typography-hierarchy",
+            element_id="*",
+            message=f"Font sizes range from {min_sz:.0f}pt to {max_sz:.0f}pt "
+                    f"(ratio {max_sz/min_sz:.1f}:1). No visible heading/body "
+                    f"hierarchy — all text is nearly the same size. "
+                    f"Paper-quality figures use deliberate size steps: "
+                    f"headings ~16-18pt, subheadings ~13-14pt, body ~10-12pt, "
+                    f"captions ~8-9pt.",
+            detail={"min_font_size": min_sz, "max_font_size": max_sz,
+                     "ratio": round(max_sz / min_sz, 1) if min_sz > 0 else 0,
+                     "total_text_cells": len(sizes)},
+        ))
+
+    return findings
+
+
+def check_composition_density(vertices: List[Vertex], page_w: float, page_h: float) -> List[Finding]:
+    """Check that the canvas isn't suspiciously empty (#P1).
+
+    A 1600x1200 canvas with only 5 shapes is a strong signal that the
+    diagram is under-developed — the agent didn't populate the layout.
+    Paper figures fill their canvas with meaningful content.
+    """
+    findings = []
+    shapes = [v for v in vertices if v.is_shape and not v.is_container and v.rect.w > 0]
+    area = page_w * page_h
+
+    if area <= 0 or len(shapes) == 0:
+        return findings
+
+    # Compute total shape area vs canvas area
+    shape_area = sum(v.rect.w * v.rect.h for v in shapes)
+    density = shape_area / area
+
+    # Very low density: shapes cover < 10% of canvas
+    if len(shapes) < 6 and area > 800 * 600:
+        findings.append(Finding(
+            severity="WARN",
+            rule="low-composition-density",
+            element_id="*",
+            message=f"Only {len(shapes)} shapes on a {page_w:.0f}x{page_h:.0f} canvas "
+                    f"(density {density:.1%}). The diagram looks sparse. "
+                    f"Either reduce canvas size to fit content, or add the "
+                    f"additional regions/panels/elements that a paper figure "
+                    f"at this scale would normally contain.",
+            detail={"shape_count": len(shapes), "canvas": f"{page_w:.0f}x{page_h:.0f}",
+                     "density": round(density, 3)},
+        ))
+
+    return findings
+
+
+def check_solitary_decorations(vertices: List[Vertex]) -> List[Finding]:
+    """Catch individual unlabeled colored shapes (< 3 in a cluster) that
+    still have no semantic label (#P1).
+
+    check_decoration_blocks needs 3+ adjacent cells to trigger. A single
+    solitary colored square with a non-semantic label is still noise.
+    This rule flags the isolates.
+    """
+    findings = []
+    for v in vertices:
+        if v.is_container or v.is_image or v.is_text:
+            continue
+        if v.fill_color is None or v.fill_color == "none":
+            continue
+        if 15 <= v.rect.w <= 120 and 15 <= v.rect.h <= 120:
+            if not _is_semantic_label(v.value):
+                findings.append(Finding(
+                    severity="WARN",
+                    rule="solitary-decoration-block",
+                    element_id=v.id,
+                    message=f"Isolated colored shape '{v.id}' "
+                            f"({v.rect.w:.0f}x{v.rect.h:.0f}, "
+                            f"fill={v.fill_color}, label={repr(v.value.strip() or '')}) "
+                            f"has no semantic label. If it carries no meaning, "
+                            f"delete it or replace with a labeled box.",
+                    detail={"element_id": v.id, "fill_color": v.fill_color,
+                             "label": v.value.strip(),
+                             "size": f"{v.rect.w:.0f}x{v.rect.h:.0f}"},
+                ))
+
+    return findings
+
+
 # ---------------------------------------------------------------------------
 # Main
 # ---------------------------------------------------------------------------
@@ -758,11 +1154,15 @@ ALL_RULES = [
     ("text-overflow", check_text_overflow),
     ("font-proportionality", check_font_proportionality),
     ("element-overlap", check_element_overlap),
+    ("icon-consistency", check_icon_consistency),
     ("spacing-variance", check_spacing_variance),
     ("color-coherence", check_color_coherence),
     ("decoration-blocks", check_decoration_blocks),
+    ("solitary-decorations", check_solitary_decorations),
     ("orphan-labels", check_orphan_labels),
     ("font-size-anomalies", check_font_size_anomalies),
+    ("typography-hierarchy", check_typography_hierarchy),
+    ("composition-density", check_composition_density),
     ("edge-density", check_edge_density),
 ]
 
@@ -776,8 +1176,8 @@ def run_all_checks(
 ) -> List[Finding]:
     all_findings: List[Finding] = []
     for rule_name, rule_fn in ALL_RULES:
-        if rule_name == "edge-density":
-            findings = rule_fn(edges, page_w, page_h)
+        if rule_name in ("edge-density", "composition-density"):
+            findings = rule_fn(edges, page_w, page_h) if rule_name == "edge-density" else rule_fn(vertices, page_w, page_h)
         elif rule_name in ("arrow-box-collision", "orphan-labels"):
             findings = rule_fn(vertices, edges)
         else:
@@ -797,20 +1197,12 @@ def main() -> int:
         description="Pre-render visual quality checks for .drawio files"
     )
     ap.add_argument("drawio", type=Path, help="Path to .drawio file")
-    ap.add_argument(
-        "--json", action="store_true", help="Output JSON report"
-    )
-    ap.add_argument(
-        "--output", "-o", type=Path, help="Write report to file"
-    )
-    ap.add_argument(
-        "--strict", action="store_true",
-        help="Treat WARN as FAIL (for CI / handoff gate)"
-    )
-    ap.add_argument(
-        "--rules", nargs="*",
-        help="Only run specific rules (name or prefix)"
-    )
+    ap.add_argument("--json", action="store_true", help="Output JSON report")
+    ap.add_argument("--output", "-o", type=Path, help="Write report to file")
+    ap.add_argument("--strict", action="store_true",
+                    help="Treat WARN as FAIL (for CI / handoff gate)")
+    ap.add_argument("--rules", nargs="*",
+                    help="Only run specific rules (name or prefix)")
     args = ap.parse_args()
 
     if not args.drawio.exists():
@@ -834,8 +1226,8 @@ def main() -> int:
 
     findings = []
     for rule_name, rule_fn in selected:
-        if rule_name == "edge-density":
-            results = rule_fn(edges, page_w, page_h)
+        if rule_name in ("edge-density", "composition-density"):
+            results = rule_fn(edges, page_w, page_h) if rule_name == "edge-density" else rule_fn(vertices, page_w, page_h)
         elif rule_name in ("arrow-box-collision", "orphan-labels"):
             results = rule_fn(vertices, edges)
         else:
@@ -860,27 +1252,13 @@ def main() -> int:
                 "passed": len(fails) == 0,
                 "clean": len(findings) == 0,
             },
-            "fails": [
-                {
-                    "rule": f.rule,
-                    "element_id": f.element_id,
-                    "message": f.message,
-                    "detail": f.detail,
-                }
-                for f in fails
-            ],
-            "warns": [
-                {
-                    "rule": f.rule,
-                    "element_id": f.element_id,
-                    "message": f.message,
-                    "detail": f.detail,
-                }
-                for f in warns
-            ],
+            "fails": [{"rule": f.rule, "element_id": f.element_id,
+                       "message": f.message, "detail": f.detail} for f in fails],
+            "warns": [{"rule": f.rule, "element_id": f.element_id,
+                       "message": f.message, "detail": f.detail} for f in warns],
             "vertex_count": len(vertices),
             "edge_count": len(edges),
-            "canvas": f"{page_w:.0f}×{page_h:.0f}",
+            "canvas": f"{page_w:.0f}x{page_h:.0f}",
         }
         output = json.dumps(report, indent=2, ensure_ascii=False)
         if args.output:
@@ -889,21 +1267,22 @@ def main() -> int:
         else:
             print(output)
     else:
+        # Platform-safe output: avoid emoji on Windows (✅❌ crash with GBK)
+        pass_str = "PASSED" if len(fails) == 0 else "BLOCKED"
         print(f"Pre-flight report for: {args.drawio}")
-        print(f"  Canvas: {page_w:.0f}×{page_h:.0f}  |  "
+        print(f"  Canvas: {page_w:.0f}x{page_h:.0f}  |  "
               f"Vertices: {len(vertices)}  |  Edges: {len(edges)}")
-        print(f"  FAIL: {len(fails)}  |  WARN: {len(warns)}  |  "
-              f"{'❌ BLOCKED' if fails else '✅ PASSED'}")
+        print(f"  FAIL: {len(fails)}  |  WARN: {len(warns)}  |  {pass_str}")
         print()
 
         if fails:
-            print("── FAIL (must fix before preview) ──")
+            print("-- FAIL (must fix before preview) --")
             for f in fails:
                 print(f"  [{f.rule}] {f.element_id}: {f.message}")
 
         if warns:
             print()
-            print("── WARN (review before preview) ──")
+            print("-- WARN (review before preview) --")
             for f in warns:
                 print(f"  [{f.rule}] {f.element_id}: {f.message}")
 

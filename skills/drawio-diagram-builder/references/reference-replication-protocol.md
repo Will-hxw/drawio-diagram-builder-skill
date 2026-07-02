@@ -13,7 +13,7 @@ The goal is to make high-fidelity drawing an evidence-driven engineering process
 5. Do not use "close enough" language for high-fidelity work. Record remaining mismatches in `defect-log.md`.
 6. **Run `scripts/validate_visual_quality.py` before the first preview.** Zero FAILs required. You are blind to geometry defects in XML — the checker is your eyes.
 7. Do not finish without at least 3 rendered screenshot review cycles (each with a canvas-only screenshot). First drafts are always flawed.
-8. Do not finish without a complete 9-zone defect inventory (≥ 30 defects), all P0/P1 fixed and verified, a red-team audit (≥ 30 findings), and a self-score card (TOTAL ≥ 40, no dimension ≤ 5).
+8. Do not finish without a complete 9-zone defect inventory (graduated minimum: C1≥30, C2≥15, C3≥8), all P0/P1 fixed and verified, a red-team audit (≥15 findings, or ≥10 if self-score ≥45/50), and a self-score card (TOTAL ≥ 40 AND every dimension ≥ 6; a dimension of 5 is borderline — review and improve before handoff).
 9. Do not judge fidelity from a full browser screenshot. The diagram must fill ≥ 80% of the screenshot image. A screenshot showing the diagrams.net toolbar, sidebar, or browser chrome is INVALID — you cannot read text or see spacing at that scale. Crop to the canvas rectangle or zoom the viewport.
 10. If the screenshot shows large structural errors, repair `visual-spec.md` and `layout-grid.md` first, then patch XML. Do not keep nudging objects without updating the plan.
 11. Do not overwrite screenshot review history. A generator may create `defect-log.md` only before review begins; after the first screenshot row exists, append new passes and corrections instead of replacing the file.
@@ -205,17 +205,31 @@ Before handoff, verify:
 - `validate_drawio.py` passes.
 - `validate_replication_artifacts.py <workdir> --require-screenshot-review` passes.
 - Preview HTML was regenerated after the latest XML edit.
-- At least 3 screenshot→inventory→fix→verify cycles were completed with canvas-only screenshots.
-- `defect-log.md` includes all cycle reports, each with at least 30 concrete defects across 9 zones.
+- At least 3 screenshot→inventory→fix→verify cycles were completed with canvas-only screenshots (graduated minimum: C1≥30, C2≥15, C3≥8).
+- `defect-log.md` includes all cycle reports, each meeting the graduated per-cycle minimum.
 - `defect-log.md` includes a screenshot evidence row with capture type ("canvas-only" if valid, "full-browser" = INVALID).
 - `defect-log.md` includes a requirement and semantic audit of the latest screenshot.
-- `defect-log.md` includes a red-team visual audit of the latest screenshot (≥ 30 findings across 9 zones).
+- `defect-log.md` includes a red-team visual audit of the latest screenshot (≥15 findings across 9 zones; ≥10 if self-score ≥45/50).
 - `defect-log.md` lists remaining mismatches.
-- A self-score card exists with TOTAL ≥ 40 and no dimension ≤ 5, with concrete evidence for every deduction.
+- A self-score card exists with TOTAL ≥ 40 AND every dimension ≥ 6, with concrete evidence for every deduction.
 - Validation was run after generation and preview writes completed, not concurrently with them.
 - No visible reference component was silently omitted.
 
 For a "100% reproduction" request, the defect log must not claim perfection. It must either show that no visible mismatches remain after screenshot review, or list the exact remaining mismatches and the next patch targets.
+
+## Graduated Minimums Reference
+
+The flat "30 everything" was replaced with a graduated model that prevents fabrication on clean diagrams:
+
+| Phase | Minimum |
+|-------|---------|
+| Cycle 1 defect inventory | ≥30 |
+| Cycle 2 defect inventory | ≥15 |
+| Cycle 3+ defect inventory | ≥8 (or ≥5 if P0=0 and self-score ≥40) |
+| Red-team audit (default) | ≥15 |
+| Red-team audit (self-score ≥45/50) | ≥10 |
+
+See `references/self-supervision-and-intake.md` Section 4.1 for the full graduated model rationale.
 
 ## High-Fidelity Replication Discipline
 

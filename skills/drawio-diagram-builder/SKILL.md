@@ -13,6 +13,7 @@ Before starting, verify these are available. If anything is missing, tell the us
 |-------------|-----|
 | **Python 3** (3.7+) | All preview/validation scripts are Python. Run `python --version` to check. |
 | **Browser automation** | The iterative refinement loop depends on taking screenshots of a local preview. You need one of: Playwright MCP, Puppeteer MCP, browser-evaluate/screenshot tools, or equivalent. |
+| **Vision / image-reading tool** (required when user provides reference images as style guides) | Style extraction (see `references/style-extraction.md`) requires sampling pixel colors from reference images. You need one of: vision-capable model with image reading, a color-picker MCP/browser tool, or the ability to ask the user for hex codes. Without this, you CANNOT complete the style extraction table — do not fabricate hex codes. Fallback: ask the user for the palette. |
 | **Internet access** | Preview loads `https://embed.diagrams.net/` in an iframe. Offline won't work. |
 | **File write access** | You will create `.drawio` files. |
 
@@ -95,13 +96,13 @@ Resolve all references relative to the skill directory.
    - **How to crop:** After taking a full-page screenshot, locate the draw.io canvas/page rectangle (the white area where your diagram renders). Crop to that rectangle. With Playwright: `await page.screenshot({ clip: { x, y, width, height } })`. The crop coordinates must come from the CURRENT screenshot, not from memory or XML — inspect the screenshot, find the canvas edges, then crop.
    - **If you cannot crop, zoom the viewport:** Navigate the browser to a larger viewport (e.g., 1920×1400 or higher) and zoom out (Ctrl+-) until the full canvas is visible, then screenshot. A zoomed-out full-canvas view is better than a clipped browser chrome view.
    - **Invalid screenshot → do not proceed to audit.** If the screenshot shows more browser UI than diagram, retake it. A blurry full-browser shot where you cannot read text is not evidence — it is a waste of an iteration cycle.
-   - **MANDATORY: Create a COMPLETE defect inventory scanning all 9 zones (text, arrows, boxes, spacing, color, typography, layout, icons, style coherence) BEFORE fixing anything.** Minimum 30 concrete defects. A garbage first draft always has 30+ visible problems. If you found fewer, you are not scanning systematically. Load `references/self-supervision-and-intake.md` Section 4.1 for the zone-by-zone scanning guide.
+   - **MANDATORY: Create a COMPLETE defect inventory scanning all 9 zones (text, arrows, boxes, spacing, color, typography, layout, icons, style coherence) BEFORE fixing anything.** Graduated minimum per cycle: Cycle 1 ≥30, Cycle 2 ≥15, Cycle 3 ≥8 (or ≥5 if P0=0 and self-score≥40). Do NOT fabricate false defects to hit quotas on a clean diagram. Load `references/self-supervision-and-intake.md` Section 4.1 for the zone-by-zone scanning guide.
    - **MANDATORY: Fix ALL P0 and P1 defects (not just the most important ones), then verify each fix against the new screenshot.** If your inventory found 40 P0/P1 items, fix all 40. Mark each as FIXED/NOT FIXED/PARTIAL/REGRESSION. A defect marked NOT FIXED means you failed — fix it again.
    - Run all 5 dimensions of the self-supervision audit to cross-check your inventory: requirement audit, semantic audit, visual hygiene audit, style audit, and regression audit.
    - Regenerate the preview HTML, refresh the browser (add a cache-busting `?rev=N`), screenshot again, and repeat.
    - Name the specific defects being fixed rather than claiming broad perfection.
    - For reference-image replication, append every screenshot pass to `defect-log.md` with: observed defect, reference evidence, XML cells to change, patch summary, and remaining risk. After the first screenshot row exists, treat `defect-log.md` as append-only.
-   - **Before claiming improvement, run a red-team role switch on the latest screenshot.** You are no longer the author. You are a hostile reviewer. Re-scan all 9 zones with fresh eyes. Minimum 30 findings required. If the self-supervision found 40 defects and red-team only finds 5 more, you are colluding, not auditing.
+   - **Before claiming improvement, run a red-team role switch on the latest screenshot.** You are no longer the author. You are a hostile reviewer. Re-scan all 9 zones with fresh eyes. Minimum findings: ≥15 (≥10 if self-score ≥45/50). After 3 fix cycles, a clean diagram has <15 residual issues — real auditing finds real problems, even if only 10 of them.
    - If the user points out an obvious screenshot defect, treat it as a self-supervision failure: re-open the source/reference, correct the interpretation, patch the diagram, screenshot a focused crop plus the full canvas, and record the lesson in the defect log. Then re-run the red-team audit — a user-found defect proves you missed others.
    - If the first screenshot is structurally wrong, go back to `visual-spec.md` and `layout-grid.md` before making XML patches. A structural miss means an observation, coordinate, asset, or draw.io-rendering assumption was wrong.
 
@@ -115,12 +116,12 @@ Resolve all references relative to the skill directory.
      | Layout consistency | /10 |
      | Style match to reference/spec | /10 |
      | **TOTAL** | **/50** |
-     - **TOTAL < 30 or any dimension ≤ 4 → BLOCKED. Continue iterating. Do not ask — just fix it.**
-     - **TOTAL 30–39 → borderline. List 5+ specific things you'd fix next. Only handoff if user asked for quick result.**
-     - **TOTAL ≥ 40 and no dimension ≤ 5 → allowed.**
+     - **TOTAL < 30 or any dimension ≤ 4 → BLOCKED.** Continue iterating. Do not ask — just fix it.
+     - **TOTAL 30–39 (and no dimension ≤ 4) → BORDERLINE.** List 5+ specific things you'd fix next. Ship only if user explicitly asked for a quick result.
+     - **TOTAL ≥ 40 and every dimension ≥ 6 → ALLOWED.** A dimension scored 5 is borderline, not allowed — review and improve it.
      - Each point deducted must cite concrete, screenshot-visible evidence.
-   - **HARD GATE: Red-team audit completed and logged.** The red-team pass must find at least 10 issues. If it found fewer, you did not try hard enough.
-   - **HARD GATE: At least 3 screenshot→review→fix cycles documented in defect log.**
+   - **HARD GATE: Red-team audit completed and logged.** The red-team pass must find at least 15 findings (≥10 if self-score ≥45/50). If it found fewer, you did not try hard enough or the diagram is ready for handoff — check the self-score card to determine which.
+   - **HARD GATE: At least 3 screenshot→inventory→fix→verify cycles documented in defect log** (each cycle = screenshot → 9-zone inventory → fix ALL P0/P1 → regenerate → verify).
    - Run `scripts/validate_drawio.py <file>.drawio`.
    - Use `scripts/validate_drawio.py --strict --json <file>.drawio` when a CI-friendly final gate is useful, or when warnings such as off-page vertices or placeholder-like labels should block handoff.
    - For reference-image replication, also run `scripts/validate_replication_artifacts.py <workdir> --require-screenshot-review` after the latest screenshot pass. Run validation after generation/preview writes finish; do not run validators in parallel with scripts that write the same artifact directory.
@@ -134,7 +135,7 @@ Resolve all references relative to the skill directory.
 - Keep a working copy and a handoff copy only when useful; keep them synchronized.
 - Never claim the diagram is complete without visual verification (a screenshot).
 - Never claim the diagram is complete if the latest screenshot still has a visible P0/P1 blocker: wrong connector semantics, hidden text, clipped text, missing required content, accidental overlap, or a direct violation of the user's prompt/style reference.
-- Never claim the diagram is complete if any hard gate is unmet: style not extracted from references, fewer than 3 screenshot cycles, no complete defect inventory across 9 zones, no fix verification, no red-team audit (≥ 20 findings), self-score below 40, or self-score has any dimension ≤ 5.
+- Never claim the diagram is complete if any hard gate is unmet: style not extracted from references, fewer than 3 screenshot cycles, no complete defect inventory across 9 zones (graduated minimum: C1≥30, C2≥15, C3≥8), no fix verification, no red-team audit (≥15 findings, or ≥10 if self-score ≥45/50), self-score below 40, or self-score has any dimension ≤ 4 (≤5 is borderline and must be improved before handoff).
 - When the user asks for "100% reproduction", treat that as an iterative standard: keep finding and fixing visible differences until the user accepts or identifies next issues.
 - For reference-image replication, never skip the intermediate artifacts. A low-quality first draw usually means the observation inventory, coordinate plan, asset ledger, or rendering assumptions were underspecified.
 

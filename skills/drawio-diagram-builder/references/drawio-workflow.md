@@ -187,12 +187,12 @@ This is the core mechanism. Without screenshots, the agent is guessing.
 
 1. **Style extraction before authoring** — if reference images provided, complete the extraction table in `references/style-extraction.md` before drawing anything.
 2. **Pre-flight before first preview** — `validate_visual_quality.py` with zero FAILs.
-3. **Minimum 3 cycles.** For any high-fidelity or user-critical diagram, complete at least 3 full screenshot→inventory→fix→verify cycles.
-4. **Complete defect inventory (all 9 zones) per cycle.** Minimum 30 concrete, named defects. A garbage first draft ALWAYS has 30+ visible problems. If you found fewer, you are not scanning systematically — go zone by zone, pixel by pixel.
+3. **Minimum 3 cycles.** For any high-fidelity or user-critical diagram, complete at least 3 full screenshot→inventory→fix ALL P0/P1→regenerate→verify cycles.
+4. **Graduated defect inventory (all 9 zones) per cycle.** Minimum defects vary by cycle: Cycle 1 ≥30, Cycle 2 ≥15, Cycle 3 ≥8 (or ≥5 if P0=0 and self-score≥40). A garbage first draft has 30+ visible problems. A clean third draft doesn't — do not fabricate false defects to hit quotas. See `references/self-supervision-and-intake.md` Section 4.1.
 5. **Fix ALL P0/P1 defects per cycle.** If your inventory found 40 P0/P1 items, you fix all 40. Not "the most important ones." ALL of them.
 6. **Fix verification after each fix pass.** Compare old vs new screenshot at each defect location. Mark FIXED/NOT FIXED/PARTIAL/REGRESSION.
-7. **Red-team audit before handoff.** Re-scan all 9 zones as a hostile reviewer. Minimum 30 findings. If the self-supervision found 40 defects and you as red-team only find 5 more, you are colluding with the author — a hostile reviewer would find at least 30 more.
-8. **Self-score card before handoff.** Score 5 dimensions (1–10). Total < 30 or any dimension ≤ 4 → BLOCKED. Total < 40 → borderline, requires justification.
+7. **Red-team audit before handoff.** Re-scan all 9 zones as a hostile reviewer. Minimum findings: ≥15 (≥10 if self-score ≥45/50). After 3 fix cycles a clean diagram has <15 residual issues — a red-team that "finds" 30 is fabricating noise. Real auditing finds real problems, even if only 10.
+8. **Self-score card before handoff.** Score 5 dimensions (1–10). BLOCKED if TOTAL <30 or any dimension ≤4. BORDERLINE if 30≤TOTAL<40 with no dim ≤4 — ship only with explicit user acceptance. ALLOWED if TOTAL ≥40 AND every dimension ≥6 (a dimension of 5 is borderline, not allowed — improve it).
 
 Use one workdir state at a time. Do not run XML generation, preview generation, screenshot capture, and artifact validation concurrently against the same directory. The safe order is:
 
@@ -200,14 +200,14 @@ Use one workdir state at a time. Do not run XML generation, preview generation, 
 2. run pre-flight (`validate_visual_quality.py`) — zero FAILs
 3. write or patch `.drawio`
 4. regenerate preview HTML
-5. refresh browser and capture screenshot
-6. create COMPLETE 9-zone defect inventory — minimum 30 concrete defects (a garbage first draft always has 30+ visible problems; if you found fewer, you are not scanning systematically)
-7. fix ALL P0 and P1 defects (not just 3-5)
+5. refresh browser and capture a canvas-only screenshot (diagram content ≥80% of image, ≥1280px wide)
+6. create COMPLETE 9-zone defect inventory — graduated minimum per cycle (C1≥30, C2≥15, C3≥8)
+7. fix ALL P0 and P1 defects
 8. regenerate preview HTML and take new screenshot
 9. verify each fix: mark FIXED/NOT FIXED/PARTIAL/REGRESSION by comparing old vs new screenshot at each defect location
 10. append `defect-log.md` with the inventory, all fixes, and verification results
-9. repeat from step 3 until ≥ 3 cycles, red-team done, self-score ≥ 40
-10. run validators
+11. repeat from step 3 until ≥3 cycles, red-team done (≥15, or ≥10 if self-score ≥45), self-score ALLOWED
+12. run validators
 
 ### How to take the screenshot
 
@@ -263,7 +263,7 @@ Each cycle is: **screenshot → inventory → fix ALL P0/P1 → verify → log**
 7. Take a new screenshot.
 8. **Verify each fix:** compare old vs new screenshot at each defect location. Mark FIXED/NOT FIXED/PARTIAL/REGRESSION. A defect marked NOT FIXED means you must fix it again — the intention doesn't count.
 9. Append the pass and verification to `defect-log.md`; after the first screenshot row exists, do not overwrite earlier review rows.
-10. Go to step 1 (continue until ≥ 3 cycles, red-team done, self-score ≥ 40).
+10. Go to step 1 (continue until ≥ 3 cycles, red-team done (≥15, or ≥10 if self-score ≥45), self-score ALLOWED (TOTAL ≥40 AND every dimension ≥6)).
 
 Useful issue categories:
 
@@ -293,10 +293,10 @@ Blocker categories that prevent handoff:
 - visual result conflicts with an explicit style constraint
 - screenshot evidence is clipped or too partial to verify the full diagram
 - fewer than 3 screenshot→inventory→fix→verify cycles completed
-- complete defect inventory not created for the latest cycle
+- complete defect inventory not created for the latest cycle (graduated minimum per cycle: C1≥30, C2≥15, C3≥8)
 - any P0 or P1 defect marked NOT FIXED in the latest verification
-- red-team audit not performed or found < 20 issues
-- self-score below threshold (TOTAL < 40 or any dimension ≤ 5)
+- red-team audit not performed or found insufficient findings (default ≥15, or ≥10 if self-score ≥45/50)
+- self-score below threshold (TOTAL < 40, or any dimension ≤ 4, or any dimension = 5 not yet improved)
 
 Avoid broad rewrites after a good base exists. Small visual regressions are easier to isolate when each pass changes only a few cells.
 
